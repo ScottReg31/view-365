@@ -163,11 +163,13 @@ let tokenClient = null;
 // ── Init ──
 function init() {
   const sel = document.getElementById('yearSelect');
-  for (let y = 2024; y <= 2030; y++) {
-    const opt = document.createElement('option');
-    opt.value = y; opt.textContent = y;
-    if (y === currentYear) opt.selected = true;
-    sel.appendChild(opt);
+  if (sel.options.length === 0) {
+    for (let y = 2024; y <= 2030; y++) {
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y === currentYear) opt.selected = true;
+      sel.appendChild(opt);
+    }
   }
   if (accessToken) {
     onSignedIn();
@@ -191,6 +193,10 @@ function initTokenClient() {
 }
 
 function handleSignIn() {
+  if (typeof google === 'undefined' || !google.accounts) {
+    alert('Google Sign-In is still loading. Please wait a moment and try again.');
+    return;
+  }
   initTokenClient();
   tokenClient.requestAccessToken();
 }
@@ -520,7 +526,13 @@ function toggleDark() {
 }
 
 // ── Start ──
-window.addEventListener('load', () => { setTimeout(init, 300); });
+window.addEventListener('load', () => { setTimeout(init, 500); });
+// Fallback if GIS takes too long
+setTimeout(() => {
+  if (!document.querySelector('.year-grid') && !document.querySelector('.sign-in-container') && !document.querySelector('.loading')) {
+    init();
+  }
+}, 2000);
 </script>
 </body>
 </html>
