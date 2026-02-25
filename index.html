@@ -36,22 +36,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 table.cal-grid { border-collapse: collapse; width: 100%; min-width: 900px; }
 
 /* Day number headers */
-table.cal-grid thead th { background: #1a3a5c; color: #fff; font-size: 10px; font-weight: 700; text-align: center; padding: 5px 2px; border: 1px solid #2a5080; min-width: 26px; }
-table.cal-grid thead th.wk-header { background: #0f2840; color: #90b8d8; font-size: 10px; min-width: 40px; letter-spacing: 1px; }
+table.cal-grid thead th { background: #1a3a5c; color: #fff; font-size: 10px; font-weight: 700; text-align: center; padding: 6px 2px; border: 2px solid #0f2840; min-width: 28px; }
+table.cal-grid thead th.wk-header { background: #0f2840; color: #90b8d8; font-size: 11px; min-width: 52px; letter-spacing: 1px; }
+table.cal-grid thead th.weekend-hdr { background: #14527a; }
 
 /* Month rows */
-table.cal-grid tbody tr { }
-table.cal-grid tbody td { border: 1px solid #b0c8e0; min-width: 26px; height: 30px; text-align: center; vertical-align: middle; font-size: 10px; cursor: pointer; transition: background 0.1s; padding: 1px; }
-table.cal-grid tbody td.month-label { background: #1a3a5c; color: #fff; font-weight: 700; font-size: 12px; letter-spacing: 1px; padding: 0 8px; text-align: center; cursor: default; min-width: 48px; }
-table.cal-grid tbody td.valid-day { background: #dce9f5; }
-table.cal-grid tbody td.valid-day:hover { background: #a8c8e8; }
-table.cal-grid tbody td.today-cell { background: #e8f4e8 !important; outline: 2px solid #2a8a4a; outline-offset: -2px; font-weight: 700; }
-table.cal-grid tbody td.weekend-cell { background: #ccdff0; }
-table.cal-grid tbody td.weekend-cell:hover { background: #a0c0e0; }
-table.cal-grid tbody td.empty-cell { background: #eef2f6; cursor: default; }
+table.cal-grid tbody td { border: 2px solid #7aaac8; min-width: 28px; height: 34px; text-align: center; vertical-align: middle; font-size: 10px; cursor: pointer; transition: background 0.1s; padding: 2px; }
+table.cal-grid tbody td.month-label { background: #1a3a5c; color: #fff; font-weight: 700; font-size: 12px; letter-spacing: 2px; padding: 0 10px; text-align: center; cursor: default; min-width: 52px; border-color: #0f2840; }
+table.cal-grid tbody td.valid-day { background: #e8f2fb; }
+table.cal-grid tbody td.valid-day:hover { background: #b8d8f0; }
+table.cal-grid tbody td.today-cell { background: #d4edda !important; border-color: #28a745 !important; border-width: 2px !important; font-weight: 700; }
+table.cal-grid tbody td.weekend-cell { background: #c2d8ee; }
+table.cal-grid tbody td.weekend-cell:hover { background: #9abcd8; }
+table.cal-grid tbody td.empty-cell { background: #d8e6f0; border-color: #9ab8cc; cursor: default; }
 table.cal-grid tbody td.has-events { position: relative; }
 table.cal-grid tbody td.marked-x { background: #1a3a5c !important; color: #fff; font-weight: 700; font-size: 13px; }
-table.cal-grid tbody td.marked-slash { background: linear-gradient(135deg, #dce9f5 50%, #1a3a5c 50%); }
+table.cal-grid tbody td.marked-slash { background: linear-gradient(135deg, #e8f2fb 50%, #1a3a5c 50%); }
+
+/* Quarterly separators */
+table.cal-grid tbody tr.q-start td { border-top: 3px solid #0f2840 !important; }
 
 /* Event dots */
 .dot-row { display: flex; gap: 2px; justify-content: center; margin-top: 1px; }
@@ -283,7 +286,8 @@ function buildGrid() {
   html += '</tr></thead><tbody>';
 
   for (let m=0; m<12; m++) {
-    html += '<tr>';
+    const isQStart = m===3||m===6||m===9;
+    html += `<tr class="${isQStart?'q-start':''}">`;
     html += `<td class="month-label">${MONTHS[m]}</td>`;
     const firstDow = new Date(currentYear, m, 1).getDay(); // 0=Sun
     for (let d=1; d<=maxDays; d++) {
