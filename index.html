@@ -184,8 +184,10 @@ function initTokenClient() {
     client_id: CLIENT_ID,
     scope: SCOPES,
     callback: (resp) => {
-      if (resp.error) { console.error(resp); return; }
+      console.log('Google auth response:', resp);
+      if (resp.error) { console.error('Auth error:', resp); alert('Auth error: ' + resp.error + ' - ' + (resp.error_description || '')); return; }
       accessToken = resp.access_token;
+      console.log('Token received, scope:', resp.scope);
       sessionStorage.setItem('gcal_token', accessToken);
       fetchUserEmail();
     }
@@ -246,8 +248,14 @@ function showSignIn() {
 
 // ── API Fetch Helper ──
 async function gfetch(url) {
+  console.log('Fetching:', url, 'Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'NONE');
   const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
-  if (r.status === 401) { signOut(); throw new Error('Token expired'); }
+  if (r.status === 401) {
+    const body = await r.text();
+    console.error('401 response:', body);
+    signOut();
+    throw new Error('Token expired');
+  }
   return r;
 }
 
