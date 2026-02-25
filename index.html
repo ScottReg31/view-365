@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Year View</title>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+:root {
+  --bg: #ffffff; --text: #1a1a1a; --muted: #6b7280; --border: #e5e7eb;
+  --hover: #f3f4f6; --today: #ef4444; --weekend: #f9fafb; --header-bg: #111827;
+  --header-text: #ffffff; --card-bg: #ffffff; --card-border: #e5e7eb;
+  --modal-bg: rgba(0,0,0,0.5); --zoom: 1;
+}
+[data-theme="dark"] {
+  --bg: #111827; --text: #f3f4f6; --muted: #9ca3af; --border: #374151;
+  --hover: #1f2937; --weekend: #1a2234; --header-bg: #000000;
+  --header-text: #ffffff; --card-bg: #1f2937; --card-border: #374151;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+
+/* Header */
+.header { background: var(--header-bg); color: var(--header-text); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.header-left { display: flex; align-items: center; gap: 16px; }
+.header h1 { font-size: 20px; font-weight: 700; }
+.header-right { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.header select, .header button { background: #374151; color: #fff; border: 1px solid #4b5563; border-radius: 6px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.header select:hover, .header button:hover { background: #4b5563; }
+.user-email { color: #9ca3af; font-size: 12px; }
+
+/* Toolbar */
+.toolbar { padding: 8px 24px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); background: var(--bg); flex-wrap: wrap; }
+.toolbar label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.toolbar input[type="checkbox"] { cursor: pointer; }
+.zoom-controls { display: flex; align-items: center; gap: 4px; }
+.zoom-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; width: 28px; height: 28px; cursor: pointer; font-size: 16px; color: var(--text); display: flex; align-items: center; justify-content: center; }
+.zoom-btn:hover { background: var(--hover); }
+
+/* Sign In */
+.sign-in-container { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; gap: 16px; }
+.sign-in-container h2 { font-size: 28px; font-weight: 300; }
+.sign-in-container p { color: var(--muted); font-size: 15px; }
+.sign-in-btn { background: #4285f4; color: white; border: none; border-radius: 8px; padding: 12px 32px; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.sign-in-btn:hover { background: #3367d6; }
+
+/* Loading */
+.loading { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; gap: 16px; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--today); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Year Grid */
+.year-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 16px 24px; transform: scale(var(--zoom)); transform-origin: top center; }
+.month-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px; }
+.month-name { font-weight: 700; font-size: 15px; text-align: center; padding: 4px 0 8px; cursor: pointer; }
+.month-name:hover { color: var(--today); }
+.weekday-headers { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 10px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.day-cell { position: relative; text-align: center; font-size: 11px; padding: 4px 2px; min-height: 28px; cursor: pointer; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+.day-cell:hover { background: var(--hover); }
+.day-cell.weekend { background: var(--weekend); }
+.day-cell.today .day-num { background: var(--today); color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.day-cell.empty { cursor: default; }
+.day-cell.empty:hover { background: none; }
+.day-num { font-size: 11px; line-height: 1; }
+.event-dots { display: flex; gap: 2px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+.event-dot { width: 5px; height: 5px; border-radius: 50%; }
+.event-count { position: absolute; top: 1px; right: 2px; font-size: 8px; background: var(--muted); color: white; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.day-cell.heat-1 { background: rgba(239,68,68,0.08); }
+.day-cell.heat-2 { background: rgba(239,68,68,0.15); }
+.day-cell.heat-3 { background: rgba(239,68,68,0.25); }
+.day-cell.heat-4 { background: rgba(239,68,68,0.35); }
+
+/* Tooltip */
+.tooltip { position: fixed; background: var(--header-bg); color: var(--header-text); padding: 8px 12px; border-radius: 6px; font-size: 12px; max-width: 250px; z-index: 1000; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: var(--modal-bg); z-index: 900; display: flex; align-items: center; justify-content: center; }
+.modal { background: var(--card-bg); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+.modal h3 { font-size: 18px; margin-bottom: 16px; }
+.modal-close { float: right; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--muted); }
+.modal-close:hover { color: var(--text); }
+.modal-event { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.modal-event:last-child { border-bottom: none; }
+.modal-event-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.modal-event-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.modal-event-time { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.modal-event-location { font-size: 12px; color: var(--muted); font-style: italic; }
+
+/* Zoomed Month View */
+.zoomed-month { padding: 24px; max-width: 800px; margin: 0 auto; }
+.zoomed-month .back-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 14px; color: var(--text); margin-bottom: 16px; }
+.zoomed-month .back-btn:hover { background: var(--hover); }
+.zoomed-month h2 { font-size: 28px; margin-bottom: 16px; }
+.zoomed-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.zoomed-weekday { text-align: center; font-size: 13px; font-weight: 700; color: var(--muted); padding: 8px; }
+.zoomed-day { min-height: 90px; border: 1px solid var(--border); border-radius: 6px; padding: 6px; cursor: pointer; }
+.zoomed-day:hover { background: var(--hover); }
+.zoomed-day.today { border-color: var(--today); border-width: 2px; }
+.zoomed-day.weekend { background: var(--weekend); }
+.zoomed-day .zd-num { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.zoomed-day.today .zd-num { color: var(--today); }
+.zoomed-day .zd-event { font-size: 10px; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; }
+.zoomed-day.empty { border-color: transparent; cursor: default; }
+.zoomed-day.empty:hover { background: none; }
+
+/* Legend */
+.legend { padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* Print */
+@media print {
+  .header, .toolbar, .legend, .sign-in-container { display: none !important; }
+  .year-grid { gap: 8px !important; padding: 8px !important; }
+  .month-card { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>📅 Year View</h1>
+    <select id="yearSelect" onchange="changeYear(this.value)"></select>
+  </div>
+  <div class="header-right" id="headerRight">
+    <button onclick="handleSignIn()" id="signInHeaderBtn" style="display:none;">Sign In</button>
+  </div>
+</div>
+
+<div class="toolbar" id="toolbar" style="display:none;">
+  <label><input type="checkbox" id="heatToggle" onchange="render()"> Heat Map</label>
+  <label><input type="checkbox" id="darkToggle" onchange="toggleDark()"> Dark Mode</label>
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="zoom(-0.05)">−</button>
+    <span style="font-size:12px;color:var(--muted);">Zoom</span>
+    <button class="zoom-btn" onclick="zoom(0.05)">+</button>
+  </div>
+  <button class="zoom-btn" onclick="fetchAllEvents()" title="Refresh" style="width:auto;padding:0 8px;">🔄</button>
+  <button class="zoom-btn" onclick="window.print()" title="Print" style="width:auto;padding:0 8px;">🖨️</button>
+</div>
+
+<div id="app"></div>
+<div class="legend" id="legend" style="display:none;"></div>
+<div id="tooltip" class="tooltip" style="display:none;"></div>
+
+<script>
+const CLIENT_ID = '142509151438-b973jph776kse5lokpgv3a5mgs2necmv.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS = ['S','M','T','W','T','F','S'];
+
+let accessToken = sessionStorage.getItem('gcal_token') || null;
+let userEmail = sessionStorage.getItem('gcal_email') || '';
+let currentYear = new Date().getFullYear();
+let calendars = [];
+let eventsByDate = {}; // 'YYYY-MM-DD' -> [{title, start, end, calendar, color, location, allDay}]
+let currentZoom = 1;
+let zoomedMonth = null; // null = year view, 0-11 = zoomed month
+let tokenClient = null;
+
+// ── Init ──
+function init() {
+  const sel = document.getElementById('yearSelect');
+  for (let y = 2024; y <= 2030; y++) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    if (y === currentYear) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  if (accessToken) {
+    onSignedIn();
+  } else {
+    showSignIn();
+  }
+}
+
+function initTokenClient() {
+  if (tokenClient) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (resp) => {
+      if (resp.error) { console.error(resp); return; }
+      accessToken = resp.access_token;
+      sessionStorage.setItem('gcal_token', accessToken);
+      fetchUserEmail();
+    }
+  });
+}
+
+function handleSignIn() {
+  initTokenClient();
+  tokenClient.requestAccessToken();
+}
+
+async function fetchUserEmail() {
+  try {
+    const r = await gfetch('https://www.googleapis.com/oauth2/v2/userinfo');
+    const d = await r.json();
+    userEmail = d.email || '';
+    sessionStorage.setItem('gcal_email', userEmail);
+  } catch(e) { userEmail = ''; }
+  onSignedIn();
+}
+
+function signOut() {
+  accessToken = null; userEmail = ''; calendars = []; eventsByDate = {};
+  sessionStorage.removeItem('gcal_token');
+  sessionStorage.removeItem('gcal_email');
+  sessionStorage.removeItem('gcal_events_' + currentYear);
+  showSignIn();
+}
+
+function onSignedIn() {
+  document.getElementById('toolbar').style.display = 'flex';
+  const hr = document.getElementById('headerRight');
+  hr.innerHTML = `
+    <span class="user-email">${userEmail}</span>
+    <button onclick="signOut()">Sign Out</button>
+  `;
+  fetchAllEvents();
+}
+
+function showSignIn() {
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('legend').style.display = 'none';
+  document.getElementById('headerRight').innerHTML = '';
+  document.getElementById('signInHeaderBtn').style.display = 'none';
+  document.getElementById('app').innerHTML = `
+    <div class="sign-in-container">
+      <h2>See your entire year at a glance</h2>
+      <p>Connect your Google Calendar to get started.</p>
+      <button class="sign-in-btn" onclick="handleSignIn()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.001-.001 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+        Sign in with Google
+      </button>
+    </div>`;
+}
+
+// ── API Fetch Helper ──
+async function gfetch(url) {
+  const r = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+  if (r.status === 401) { signOut(); throw new Error('Token expired'); }
+  return r;
+}
+
+// ── Fetch Events ──
+async function fetchAllEvents() {
+  document.getElementById('app').innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading your year...</p></div>';
+  try {
+    // Fetch calendar list
+    const clr = await gfetch('https://www.googleapis.com/calendar/v3/users/me/calendarList');
+    const cld = await clr.json();
+    calendars = (cld.items || []).filter(c => c.selected !== false).map(c => ({
+      id: c.id, name: c.summary || c.id,
+      color: c.backgroundColor || '#4285f4'
+    }));
+
+    // Fetch events from each calendar
+    eventsByDate = {};
+    const timeMin = new Date(currentYear, 0, 1).toISOString();
+    const timeMax = new Date(currentYear, 11, 31, 23, 59, 59).toISOString();
+
+    for (const cal of calendars) {
+      let pageToken = '';
+      do {
+        let url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=2500&timeZone=America/Chicago`;
+        if (pageToken) url += '&pageToken=' + pageToken;
+        const er = await gfetch(url);
+        const ed = await er.json();
+        for (const ev of (ed.items || [])) {
+          if (ev.status === 'cancelled') continue;
+          const allDay = !!ev.start.date;
+          const startStr = ev.start.date || ev.start.dateTime;
+          const endStr = ev.end.date || ev.end.dateTime;
+          const startDate = new Date(startStr);
+          const endDate = new Date(endStr);
+
+          // For multi-day events, add to each day
+          const d = new Date(startDate);
+          if (allDay) {
+            // All-day end date is exclusive
+            while (d < endDate) {
+              addEvent(d, ev, cal, allDay);
+              d.setDate(d.getDate() + 1);
+            }
+          } else {
+            addEvent(startDate, ev, cal, false);
+            // If event spans midnight, add to subsequent days
+            const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            let cursor = new Date(startDay);
+            cursor.setDate(cursor.getDate() + 1);
+            while (cursor <= endDay) {
+              addEvent(cursor, ev, cal, false);
+              cursor.setDate(cursor.getDate() + 1);
+            }
+          }
+        }
+        pageToken = ed.nextPageToken || '';
+      } while (pageToken);
+    }
+
+    render();
+  } catch(e) {
+    console.error(e);
+    if (e.message !== 'Token expired') {
+      document.getElementById('app').innerHTML = `<div class="loading"><p>Error loading events. <button onclick="fetchAllEvents()">Retry</button></p></div>`;
+    }
+  }
+}
+
+function addEvent(date, ev, cal, allDay) {
+  const key = dateKey(date);
+  if (!eventsByDate[key]) eventsByDate[key] = [];
+  const startDT = ev.start.dateTime ? new Date(ev.start.dateTime) : null;
+  const endDT = ev.end.dateTime ? new Date(ev.end.dateTime) : null;
+  eventsByDate[key].push({
+    title: ev.summary || '(No title)',
+    start: startDT,
+    end: endDT,
+    allDay,
+    color: cal.color,
+    calendarName: cal.name,
+    location: ev.location || '',
+    description: ev.description || ''
+  });
+}
+
+function dateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// ── Render ──
+function render() {
+  if (zoomedMonth !== null) { renderZoomedMonth(); return; }
+  const heat = document.getElementById('heatToggle').checked;
+  const today = new Date();
+  const todayKey = dateKey(today);
+
+  let html = '<div class="year-grid" style="--zoom:' + currentZoom + '">';
+  for (let m = 0; m < 12; m++) {
+    html += '<div class="month-card">';
+    html += `<div class="month-name" onclick="zoomMonth(${m})">${MONTHS[m]}</div>`;
+    html += '<div class="weekday-headers">';
+    for (const d of DAYS) html += `<div>${d}</div>`;
+    html += '</div><div class="days-grid">';
+
+    const firstDay = new Date(currentYear, m, 1).getDay();
+    const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) html += '<div class="day-cell empty"></div>';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dt = new Date(currentYear, m, d);
+      const key = dateKey(dt);
+      const dow = dt.getDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isToday = key === todayKey;
+      const events = eventsByDate[key] || [];
+      const evCount = events.length;
+
+      let heatClass = '';
+      if (heat && evCount > 0) {
+        heatClass = evCount >= 4 ? 'heat-4' : evCount >= 3 ? 'heat-3' : evCount >= 2 ? 'heat-2' : 'heat-1';
+      }
+
+      const classes = ['day-cell', isWeekend ? 'weekend' : '', isToday ? 'today' : '', heatClass].filter(Boolean).join(' ');
+
+      html += `<div class="${classes}" data-date="${key}" onmouseenter="showTooltip(event,'${key}')" onmouseleave="hideTooltip()" onclick="showDayModal('${key}')">`;
+      html += `<span class="day-num">${d}</span>`;
+
+      if (evCount > 0) {
+        // Show up to 3 dots
+        html += '<div class="event-dots">';
+        const uniqueColors = [...new Set(events.map(e => e.color))];
+        for (let i = 0; i < Math.min(uniqueColors.length, 3); i++) {
+          html += `<div class="event-dot" style="background:${uniqueColors[i]}"></div>`;
+        }
+        html += '</div>';
+        if (evCount >= 2) html += `<div class="event-count">${evCount}</div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  document.getElementById('app').innerHTML = html;
+  renderLegend();
+}
+
+function renderZoomedMonth() {
+  const m = zoomedMonth;
+  const today = new Date();
+  const todayKey = dateKey(today);
+  const firstDay = new Date(currentYear, m, 1).getDay();
+  const daysInMonth = new Date(currentYear, m + 1, 0).getDate();
+
+  let html = '<div class="zoomed-month">';
+  html += `<button class="back-btn" onclick="zoomedMonth=null;render();">← Back to Year</button>`;
+  html += `<h2>${MONTHS[m]} ${currentYear}</h2>`;
+  html += '<div class="zoomed-days">';
+
+  for (const d of DAYS) html += `<div class="zoomed-weekday">${d}</div>`;
+  for (let i = 0; i < firstDay; i++) html += '<div class="zoomed-day empty"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(currentYear, m, d);
+    const key = dateKey(dt);
+    const dow = dt.getDay();
+    const isWeekend = dow === 0 || dow === 6;
+    const isToday = key === todayKey;
+    const events = eventsByDate[key] || [];
+
+    const classes = ['zoomed-day', isWeekend ? 'weekend' : '', isToday ? 'today' : ''].filter(Boolean).join(' ');
+    html += `<div class="${classes}" onclick="showDayModal('${key}')">`;
+    html += `<div class="zd-num">${d}</div>`;
+    for (let i = 0; i < Math.min(events.length, 3); i++) {
+      const ev = events[i];
+      html += `<div class="zd-event" style="background:${ev.color}">${ev.allDay ? '◆ ' : formatTime(ev.start) + ' '}${ev.title}</div>`;
+    }
+    if (events.length > 3) html += `<div style="font-size:10px;color:var(--muted);">+${events.length - 3} more</div>`;
+    html += '</div>';
+  }
+  html += '</div></div>';
+  document.getElementById('app').innerHTML = html;
+}
+
+function renderLegend() {
+  const leg = document.getElementById('legend');
+  if (calendars.length === 0) { leg.style.display = 'none'; return; }
+  leg.style.display = 'flex';
+  leg.innerHTML = calendars.map(c =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${c.color}"></div>${c.name}</div>`
+  ).join('');
+}
+
+// ── Tooltip ──
+function showTooltip(e, key) {
+  const events = eventsByDate[key];
+  if (!events || events.length === 0) return;
+  const tt = document.getElementById('tooltip');
+  const lines = events.slice(0, 5).map(ev =>
+    (ev.allDay ? '◆ ' : formatTime(ev.start) + ' ') + ev.title
+  );
+  if (events.length > 5) lines.push(`+${events.length - 5} more`);
+  tt.innerHTML = lines.join('<br>');
+  tt.style.display = 'block';
+  tt.style.left = Math.min(e.clientX + 12, window.innerWidth - 270) + 'px';
+  tt.style.top = (e.clientY + 12) + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ── Day Modal ──
+function showDayModal(key) {
+  hideTooltip();
+  const events = eventsByDate[key] || [];
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const dateStr = dt.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  let html = `<div class="modal-overlay" onclick="if(event.target===this)this.remove()">`;
+  html += '<div class="modal">';
+  html += `<button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>`;
+  html += `<h3>${dateStr}</h3>`;
+
+  if (events.length === 0) {
+    html += '<p style="color:var(--muted);font-size:14px;">No events this day.</p>';
+  } else {
+    for (const ev of events) {
+      html += '<div class="modal-event">';
+      html += `<div class="modal-event-title"><div class="modal-event-dot" style="background:${ev.color}"></div>${ev.title}</div>`;
+      if (ev.allDay) {
+        html += '<div class="modal-event-time">All day</div>';
+      } else if (ev.start) {
+        html += `<div class="modal-event-time">${formatTime(ev.start)}${ev.end ? ' – ' + formatTime(ev.end) : ''}</div>`;
+      }
+      if (ev.location) html += `<div class="modal-event-location">📍 ${ev.location}</div>`;
+      html += '</div>';
+    }
+  }
+  html += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ── Helpers ──
+function formatTime(dt) {
+  if (!dt) return '';
+  let h = dt.getHours(), m = dt.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return m ? `${h}:${String(m).padStart(2,'0')} ${ampm}` : `${h} ${ampm}`;
+}
+
+function changeYear(y) {
+  currentYear = parseInt(y);
+  zoomedMonth = null;
+  if (accessToken) fetchAllEvents();
+}
+
+function zoomMonth(m) { zoomedMonth = m; render(); }
+
+function zoom(delta) {
+  currentZoom = Math.max(0.5, Math.min(1.5, currentZoom + delta));
+  render();
+}
+
+function toggleDark() {
+  document.documentElement.setAttribute('data-theme',
+    document.getElementById('darkToggle').checked ? 'dark' : '');
+}
+
+// ── Start ──
+window.addEventListener('load', () => { setTimeout(init, 300); });
+</script>
+</body>
+</html>
