@@ -24,6 +24,7 @@
   --lbl-fg:      #dddddd;
   --invalid-bg:  #f0f0f0;
   --row-h: 85px;
+  --col-w: 44px;
 }
 
 body.dark {
@@ -133,10 +134,10 @@ html, body {
 */
 .year-grid {
   display: grid;
-  grid-template-columns: 62px repeat(31, minmax(36px, 1fr));
+  grid-template-columns: 62px repeat(31, minmax(var(--col-w), 1fr));
   grid-template-rows: 36px repeat(12, var(--row-h));
   width: 100%;
-  min-width: calc(62px + 31 * 36px); /* ~1178px min before scrolling */
+  min-width: calc(62px + 31 * var(--col-w));
   border-left: 1px solid var(--border);
 }
 
@@ -324,7 +325,7 @@ body.dense .g-more      { font-size: 8px; }
              min="45" max="150" value="85"
              oninput="setRowH(+this.value)">
       <span class="zoom-end">+</span>
-      <span class="zoom-lbl" id="zoomLbl">85px rows</span>
+      <span class="zoom-lbl" id="zoomLbl">85%</span>
     </div>
   </div>
 
@@ -351,7 +352,7 @@ let enabledCals = null;
 let evts        = {};
 let tclient     = null;
 let isDark      = localStorage.getItem('v365_dark') === '1';
-let rowH        = parseInt(localStorage.getItem('v365_rowh') || '85');
+let zoom        = parseInt(localStorage.getItem('v365_zoom') || '85');
 let calDropOpen = false;
 
 // ── Helpers ──
@@ -371,16 +372,19 @@ function fmt(dt) {
 }
 function isCalEnabled(id) { return !enabledCals || enabledCals.has(id); }
 
-// ── Row Height / Zoom ──
-function applyRowH(h) {
-  rowH = Math.max(45, Math.min(150, h));
+// ── Zoom (scales row height + column width together) ──
+function applyZoom(z) {
+  zoom = Math.max(45, Math.min(150, z));
+  const rowH = zoom;
+  const colW = Math.max(28, Math.round(zoom * 0.52));
   document.documentElement.style.setProperty('--row-h', rowH + 'px');
-  document.body.classList.toggle('dense', rowH < 55);
-  localStorage.setItem('v365_rowh', rowH);
-  const s = document.getElementById('zoomSlider'); if (s) s.value = rowH;
-  const l = document.getElementById('zoomLbl');    if (l) l.textContent = rowH + 'px rows';
+  document.documentElement.style.setProperty('--col-w', colW + 'px');
+  document.body.classList.toggle('dense', zoom < 55);
+  localStorage.setItem('v365_zoom', zoom);
+  const s = document.getElementById('zoomSlider'); if (s) s.value = zoom;
+  const l = document.getElementById('zoomLbl');    if (l) l.textContent = zoom + '%';
 }
-function setRowH(h) { applyRowH(h); }
+function setRowH(z) { applyZoom(z); }
 
 // ── Dark Mode ──
 function toggleDark() {
@@ -392,7 +396,7 @@ function toggleDark() {
 // ── Init ──
 function init() {
   if (isDark) document.body.classList.add('dark');
-  applyRowH(rowH);
+  applyZoom(zoom);
   document.getElementById('yearLabel').textContent = year;
   token ? onIn() : showSignIn();
 }
@@ -439,9 +443,9 @@ function renderHdr() {
     <div class="zoom-ctrl">
       <span class="zoom-end">−</span>
       <input type="range" class="zoom-slider" id="zoomSlider"
-             min="45" max="150" value="${rowH}" oninput="setRowH(+this.value)">
+             min="45" max="150" value="${zoom}" oninput="setRowH(+this.value)">
       <span class="zoom-end">+</span>
-      <span class="zoom-lbl" id="zoomLbl">${rowH}px rows</span>
+      <span class="zoom-lbl" id="zoomLbl">${zoom}%</span>
     </div>`;
 
   if (token && cals.length > 0) {
