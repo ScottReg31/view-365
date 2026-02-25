@@ -358,6 +358,11 @@ let calDropOpen = false;
 function dk(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+// Parse a YYYY-MM-DD string as LOCAL midnight (not UTC) to avoid timezone shift
+function parseLocalDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
 function fmt(dt) {
   if (!dt) return '';
   let h = dt.getHours(), m = dt.getMinutes(), ap = h >= 12 ? 'PM' : 'AM';
@@ -565,8 +570,8 @@ async function fetchAllEvents() {
         for (const ev of (ed.items||[])) {
           if (ev.status==='cancelled') continue;
           const allDay = !!ev.start.date;
-          const sd = new Date(ev.start.date||ev.start.dateTime);
-          const en = new Date(ev.end.date||ev.end.dateTime);
+          const sd = allDay ? parseLocalDate(ev.start.date) : new Date(ev.start.dateTime);
+          const en = allDay ? parseLocalDate(ev.end.date)   : new Date(ev.end.dateTime);
           if (allDay) {
             for (let d=new Date(sd); d<en; d.setDate(d.getDate()+1)) addEv(new Date(d),ev,cal,true);
           } else { addEv(sd,ev,cal,false); }
