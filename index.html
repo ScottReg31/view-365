@@ -150,6 +150,8 @@ html, body {
   background: var(--hdr-bg);
   border-right: 2px solid var(--border);
   border-bottom: 2px solid var(--border);
+  border-left: 2px solid var(--border);
+  border-top: 2px solid var(--border);
 }
 
 /* ── Day-number header row ── */
@@ -159,7 +161,7 @@ html, body {
   background: var(--hdr-bg); color: var(--hdr-fg);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700;
-  border-right: 1px solid rgba(255,255,255,0.07);
+  border-right: 1px solid var(--border);
   border-bottom: 2px solid var(--border);
   line-height: 1.2;
 }
@@ -230,7 +232,7 @@ html, body {
 .g-more { font-size: 9px; color: var(--muted); padding: 0 3px; }
 
 /* ── Quarter dividers (APR / JUL / OCT) ── */
-.qtr-start { border-top: 2px solid var(--today-bg) !important; }
+.qtr-start { border-top: 3px solid var(--muted) !important; }
 
 /* Dense mode — row height < 55px */
 body.dense .g-day       { padding: 2px 3px; }
@@ -405,12 +407,18 @@ function setRowH(z) { applyZoom(z); }
 
 // ── Fit to Screen ──
 function fitToScreen() {
-  // Grid = 62px (month col) + 31 * col-w; col-w = max(28, round(zoom * 0.52))
-  // Solve for zoom where grid fills the viewport width
-  const avail = window.innerWidth - 4; // tiny breathing room
-  const targetColW = Math.floor((avail - 62) / 31);
-  const targetZoom = Math.round(targetColW / 0.52);
-  applyZoom(targetZoom);
+  // Width fit: 62px (month col) + 31 * col-w fills viewport width
+  const availW = window.innerWidth - 4;
+  const targetColW = Math.floor((availW - 62) / 31);
+  const zoomW = Math.round(targetColW / 0.52);
+
+  // Height fit: 52px (header) + 36px (day-row) + 12 * row-h + 38px (legend) = viewport height
+  // row-h = zoom, so: zoom = (availH - 126) / 12
+  const availH = window.innerHeight - 52 - 36 - 38;
+  const zoomH = Math.floor(availH / 12);
+
+  // Use the smaller of the two so everything fits in both dimensions
+  applyZoom(Math.min(zoomW, zoomH));
 }
 
 // ── Dark Mode ──
