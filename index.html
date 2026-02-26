@@ -18,30 +18,44 @@
   --hover:       #e6eaf0;
   --today-bg:    #2563eb;
   --today-fg:    #ffffff;
-  --hdr-bg:      #1e2d42;
-  --hdr-fg:      #d0d9e8;
-  --lbl-bg:      #1e2d42;
-  --lbl-fg:      #e8f0f8;
+  --hdr-bg:      #d6e4f4;
+  --hdr-fg:      #1a2a40;
+  --lbl-bg:      #d6e4f4;
+  --lbl-fg:      #1a2a40;
   --invalid-bg:  #f5f7fa;
+  /* header chrome — adapts to light header */
+  --hdr-border:       rgba(0,0,0,0.14);
+  --hdr-hover:        rgba(0,0,0,0.07);
+  --hdr-hover-border: rgba(0,0,0,0.24);
+  --hdr-muted:        rgba(0,0,0,0.35);
+  --hdr-track:        rgba(0,0,0,0.14);
+  --hdr-thumb:        rgba(0,0,0,0.38);
   --row-h: 85px;
   --col-w: 44px;
 }
 
 body.dark {
-  --bg:          #1e2840;
-  --bg2:         #283252;
-  --fg:          #e8f0fc;
-  --muted:       #96aacb;
-  --border:      #445070;
-  --weekend:     #233050;
-  --hover:       #2e3d62;
+  --bg:          #2a3a58;
+  --bg2:         #334468;
+  --fg:          #edf4ff;
+  --muted:       #98b0cc;
+  --border:      #4e6585;
+  --weekend:     #2e4068;
+  --hover:       #3a5080;
   --today-bg:    #2563eb;
   --today-fg:    #ffffff;
-  --hdr-bg:      #18223a;
-  --hdr-fg:      #d0dff0;
-  --lbl-bg:      #18223a;
-  --lbl-fg:      #b8d8f8;
-  --invalid-bg:  #1c253e;
+  --hdr-bg:      #223058;
+  --hdr-fg:      #d8ebff;
+  --lbl-bg:      #223058;
+  --lbl-fg:      #c0dcf8;
+  --invalid-bg:  #263860;
+  /* header chrome — adapts to dark header */
+  --hdr-border:       rgba(255,255,255,0.15);
+  --hdr-hover:        rgba(255,255,255,0.1);
+  --hdr-hover-border: rgba(255,255,255,0.28);
+  --hdr-muted:        rgba(255,255,255,0.35);
+  --hdr-track:        rgba(255,255,255,0.18);
+  --hdr-thumb:        rgba(255,255,255,0.75);
 }
 
 html, body {
@@ -56,47 +70,47 @@ html, body {
   background: var(--hdr-bg); color: var(--hdr-fg);
   display: flex; align-items: center;
   padding: 0 16px; height: 52px; gap: 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
 .hdr-left  { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .hdr-mid   { display: flex; align-items: center; gap: 14px; flex: 1; justify-content: center; }
 .hdr-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-.hdr h1 { font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #ffffff; opacity: 0.92; }
+.hdr h1 { font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--hdr-fg); opacity: 0.9; }
 .hdr-nav { display: flex; align-items: center; gap: 6px; }
 .hdr-nav button {
-  background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 5px;
+  background: none; border: 1px solid var(--hdr-border); border-radius: 5px;
   color: var(--hdr-fg); width: 28px; height: 28px;
   font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: background 0.12s, border-color 0.12s;
 }
-.hdr-nav button:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.28); }
+.hdr-nav button:hover { background: var(--hdr-hover); border-color: var(--hdr-hover-border); }
 .hdr-year { font-size: 15px; font-weight: 600; min-width: 40px; text-align: center; }
 .hdr-btn {
-  background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 5px;
+  background: none; border: 1px solid var(--hdr-border); border-radius: 5px;
   color: var(--hdr-fg); padding: 5px 11px;
   font-size: 11px; cursor: pointer; white-space: nowrap;
   transition: background 0.12s, border-color 0.12s;
 }
-.hdr-btn:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.28); }
-.user-email { color: rgba(255,255,255,0.35); font-size: 11px; }
+.hdr-btn:hover { background: var(--hdr-hover); border-color: var(--hdr-hover-border); }
+.user-email { color: var(--hdr-muted); font-size: 11px; }
 
 /* ─────────────── ZOOM SLIDER ─────────────── */
 .zoom-ctrl { display: flex; align-items: center; gap: 7px; }
-.zoom-lbl  { font-size: 10px; color: rgba(255,255,255,0.35); min-width: 50px; text-align: center; white-space: nowrap; }
-.zoom-end  { font-size: 11px; color: rgba(255,255,255,0.3); user-select: none; }
+.zoom-lbl  { font-size: 10px; color: var(--hdr-muted); min-width: 50px; text-align: center; white-space: nowrap; }
+.zoom-end  { font-size: 11px; color: var(--hdr-muted); user-select: none; }
 .zoom-slider {
   -webkit-appearance: none; appearance: none;
-  width: 96px; height: 3px; background: rgba(255,255,255,0.18); border-radius: 2px; outline: none; cursor: pointer;
+  width: 96px; height: 3px; background: var(--hdr-track); border-radius: 2px; outline: none; cursor: pointer;
 }
 .zoom-slider::-webkit-slider-thumb {
   -webkit-appearance: none; width: 14px; height: 14px;
-  border-radius: 50%; background: rgba(255,255,255,0.75); cursor: pointer;
+  border-radius: 50%; background: var(--hdr-thumb); cursor: pointer;
 }
 .zoom-slider::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 50%; border: none;
-  background: rgba(255,255,255,0.75); cursor: pointer;
+  background: var(--hdr-thumb); cursor: pointer;
 }
 
 /* ─────────────── CALENDAR PICKER ─────────────── */
