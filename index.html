@@ -299,6 +299,20 @@ body.dense .g-more      { font-size: 8px; }
 .leg-item { display: flex; align-items: center; gap: 5px; }
 .leg-dot  { width: 8px; height: 8px; border-radius: 50%; }
 
+/* ─────────────── HOVER TOOLTIP ─────────────── */
+#tip {
+  position: fixed; z-index: 800;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px;
+  min-width: 160px; max-width: 260px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+  pointer-events: none; font-size: 12px;
+}
+.tip-date { font-weight: 700; font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.tip-ev   { display: flex; align-items: center; gap: 6px; padding: 2px 0; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tip-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.tip-more { font-size: 10px; color: var(--muted); margin-top: 3px; }
+
 /* ─────────────── PRINT ─────────────── */
 @media print {
   .hdr { position: static !important; }
@@ -310,6 +324,7 @@ body.dense .g-more      { font-size: 8px; }
 </head>
 <body>
 
+<div id="tip" style="display:none;"></div>
 <div class="hdr">
   <div class="hdr-left">
     <h1>View 365</h1>
@@ -388,6 +403,16 @@ function applyZoom(z) {
 }
 function setRowH(z) { applyZoom(z); }
 
+// ── Fit to Screen ──
+function fitToScreen() {
+  // Grid = 62px (month col) + 31 * col-w; col-w = max(28, round(zoom * 0.52))
+  // Solve for zoom where grid fills the viewport width
+  const avail = window.innerWidth - 4; // tiny breathing room
+  const targetColW = Math.floor((avail - 62) / 31);
+  const targetZoom = Math.round(targetColW / 0.52);
+  applyZoom(targetZoom);
+}
+
 // ── Dark Mode ──
 function toggleDark() {
   isDark = !isDark;
@@ -448,6 +473,7 @@ function renderHdr() {
              min="45" max="200" value="${zoom}" oninput="setRowH(+this.value)">
       <span class="zoom-end">+</span>
       <span class="zoom-lbl" id="zoomLbl">${zoom}%</span>
+      <button class="hdr-btn" onclick="fitToScreen()" title="Fit entire year to screen width">⊡ Fit</button>
     </div>`;
 
   if (token && cals.length > 0) {
@@ -699,6 +725,48 @@ function showModal(key) {
   h += '</div></div>';
   document.body.insertAdjacentHTML('beforeend', h);
 }
+
+// ── Hover Tooltip ──
+let tipTarget = null;
+function showTip(cell, key) {
+  const list = (evts[key] || []).filter(e => isCalEnabled(e.calId));
+  if (!list.length) { hideTip(); return; }
+  const tip = document.getElementById('tip');
+  const [y, m, d] = key.split('-').map(Number);
+  const dateStr = new Date(y, m-1, d).toLocaleDateString('en-US',
+    { weekday: 'short', month: 'short', day: 'numeric' });
+  let h = `<div class="tip-date">${dateStr}</div>`;
+  list.slice(0, 7).forEach(ev => {
+    const t = ev.allDay ? '' : fmt(ev.start) + ' ';
+    h += `<div class="tip-ev"><span class="tip-dot" style="background:${ev.color}"></span><span style="overflow:hidden;text-overflow:ellipsis">${t}${ev.title}</span></div>`;
+  });
+  if (list.length > 7) h += `<div class="tip-more">+${list.length - 7} more</div>`;
+  tip.innerHTML = h;
+  tip.style.display = 'block';
+  const rect = cell.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = rect.left, top = rect.bottom + 6;
+  if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+  if (top + th > window.innerHeight - 8) top = rect.top - th - 6;
+  tip.style.left = left + 'px';
+  tip.style.top  = top  + 'px';
+}
+function hideTip() {
+  document.getElementById('tip').style.display = 'none';
+  tipTarget = null;
+}
+document.addEventListener('mouseover', e => {
+  const cell = e.target.closest('.g-day:not(.invalid)');
+  if (cell === tipTarget) return;
+  if (!cell) { hideTip(); return; }
+  tipTarget = cell;
+  const oc = cell.getAttribute('onclick') || '';
+  const key = (oc.match(/'([^']+)'/) || [])[1];
+  if (key) showTip(cell, key);
+});
+document.addEventListener('mouseout', e => {
+  if (!e.relatedTarget || !e.relatedTarget.closest('#tip, .g-day:not(.invalid)')) hideTip();
+});
 
 // ── Year Nav ──
 function changeYear(y) {
