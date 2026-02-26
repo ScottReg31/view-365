@@ -28,20 +28,20 @@
 }
 
 body.dark {
-  --bg:          #1a1f2e;
-  --bg2:         #222838;
-  --fg:          #dde6f4;
-  --muted:       #7d8eaa;
-  --border:      #38445e;
-  --weekend:     #1e2438;
-  --hover:       #2a3350;
+  --bg:          #1e2840;
+  --bg2:         #283252;
+  --fg:          #e8f0fc;
+  --muted:       #96aacb;
+  --border:      #445070;
+  --weekend:     #233050;
+  --hover:       #2e3d62;
   --today-bg:    #2563eb;
   --today-fg:    #ffffff;
-  --hdr-bg:      #141928;
-  --hdr-fg:      #c0cedf;
-  --lbl-bg:      #141928;
-  --lbl-fg:      #a8cceb;
-  --invalid-bg:  #181d2c;
+  --hdr-bg:      #18223a;
+  --hdr-fg:      #d0dff0;
+  --lbl-bg:      #18223a;
+  --lbl-fg:      #b8d8f8;
+  --invalid-bg:  #1c253e;
 }
 
 html, body {
@@ -141,7 +141,6 @@ html, body {
   grid-template-rows: 36px repeat(12, var(--row-h));
   width: 100%;
   min-width: calc(62px + 31 * var(--col-w));
-  border-left: 1px solid var(--border);
 }
 
 /* ── Corner cell (top-left) ── */
@@ -196,10 +195,11 @@ html, body {
 .g-day.wknd        { background: var(--weekend); }
 .g-day.wknd:hover  { background: var(--hover); }
 .g-day.today {
-  background: var(--today-bg) !important;
-  color: var(--today-fg) !important;
+  outline: 3px solid #dc2626;
+  outline-offset: -3px;
+  background: var(--bg2) !important;
 }
-.g-day.today:hover { opacity: 0.88; }
+.g-day.today:hover { background: var(--hover) !important; }
 .g-day.invalid {
   background: var(--invalid-bg);
   cursor: default;
@@ -215,9 +215,8 @@ html, body {
   font-size: 8px; font-weight: 700; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--muted);
 }
-.g-day.today .g-day-dow { color: rgba(255,255,255,0.5); }
 .g-day-num { font-size: 12px; font-weight: 600; }
-.g-day.today .g-day-num { color: var(--today-fg); }
+.g-day.today .g-day-num { color: #dc2626; font-weight: 800; }
 
 /* Events */
 .g-day-events { display: flex; flex-direction: column; gap: 2px; }
@@ -227,10 +226,11 @@ html, body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: #fff; line-height: 1.4;
 }
-.g-day.today .g-day-event { opacity: 0.88; }
 .g-day-event.allday { border-left: 3px solid rgba(255,255,255,0.4); }
 .g-more { font-size: 9px; color: var(--muted); padding: 0 3px; }
-.g-day.today .g-more { color: rgba(255,255,255,0.5); }
+
+/* ── Quarter dividers (APR / JUL / OCT) ── */
+.qtr-start { border-top: 2px solid var(--today-bg) !important; }
 
 /* Dense mode — row height < 55px */
 body.dense .g-day       { padding: 2px 3px; }
@@ -614,8 +614,10 @@ function buildGrid() {
 
   // 12 month rows
   for (let m = 0; m < 12; m++) {
+    const isQtr = m === 3 || m === 6 || m === 9; // APR / JUL / OCT
+
     // Month label
-    html += `<div class="g-month-lbl">${MONS[m]}</div>`;
+    html += `<div class="g-month-lbl${isQtr ? ' qtr-start' : ''}">${MONS[m]}</div>`;
 
     // 31 day cells
     for (let d = 1; d <= 31; d++) {
@@ -623,7 +625,7 @@ function buildGrid() {
       const valid = date.getMonth() === m; // rolls to next month if invalid
 
       if (!valid) {
-        html += '<div class="g-day invalid"></div>';
+        html += `<div class="g-day invalid${isQtr ? ' qtr-start' : ''}"></div>`;
       } else {
         const key     = dk(date);
         const dow     = date.getDay();
@@ -632,6 +634,7 @@ function buildGrid() {
         const dayEvts = (evts[key] || []).filter(e => isCalEnabled(e.calId));
 
         let cls = 'g-day';
+        if (isQtr)       cls += ' qtr-start';
         if (isToday)     cls += ' today';
         else if (isWknd) cls += ' wknd';
 
