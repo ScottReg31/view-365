@@ -267,7 +267,8 @@ html, body {
 .g-day-event.multi-start { border-radius:5px 0 0 5px; margin-left:0; }
 .g-day-event.multi-end { border-radius:0 5px 5px 0; margin-right:0; }
 .g-day-event.multi-mid, .g-day-event.multi-end { color:transparent; }
-.g-day-event.multi-start { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,.18); }
+.g-day-event.multi-start { overflow:visible; text-overflow:clip; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,.18); }
+.g-day-event.multi-start .multi-label { position:absolute; inset:0 auto 0 0; padding:1px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
 .g-day-event.allday.multi-mid, .g-day-event.allday.multi-end { border-left:0; }
 .g-day-event.multi-part::after { content:''; position:absolute; inset:0; }
 .g-day-event.multi-part { position:relative; z-index:2; }
@@ -683,6 +684,7 @@ function syncHeaderHeight() {
   if (hdr) document.documentElement.style.setProperty('--hdr-h', `${hdr.offsetHeight}px`);
 }
 window.addEventListener('resize', syncHeaderHeight);
+window.addEventListener('resize', () => requestAnimationFrame(sizeYearSpanLabels));
 
 // ── Calendar Dropdown ──
 function renderCalDrop() {
@@ -924,6 +926,20 @@ function eventDisplaySort(a, b) {
     a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 }
 
+// Let the title read across its connected Year View bar, while clipping it at
+// the final colored segment. Event capacity is calculated separately per day,
+// so this visual label cannot hide or displace neighboring events.
+function sizeYearSpanLabels() {
+  document.querySelectorAll('.g-day-event.multi-start .multi-label').forEach(label=>{
+    const startCell=label.closest('.g-day');
+    const endCell=document.querySelector(`.g-day[data-month="${startCell.dataset.month}"][data-day="${label.dataset.endDay}"]`);
+    if(!endCell) return;
+    const left=label.getBoundingClientRect().left;
+    const right=endCell.getBoundingClientRect().right-5;
+    label.style.width=`${Math.max(0,right-left)}px`;
+  });
+}
+
 // ── Build Wall Calendar Grid ──
 function buildGrid() {
   const today = dk(new Date());
@@ -995,7 +1011,10 @@ function buildGrid() {
             shown++;
             const t = ev.allDay ? '' : fmt(ev.start) + ' ';
             const multi = spanClass(ev,key);
-            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${spanLabel(ev,key)}</div>`;
+            const label=(key===ev.spanStart || d===1)
+              ? `<span class="multi-label" data-end-day="${item.end}">${ev.title}</span>`
+              : '&nbsp;';
+            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${label}</div>`;
           }
           dayEvts
             .filter(ev=>!ev.allDay || ev.spanStart===ev.spanEnd)
@@ -1016,6 +1035,7 @@ function buildGrid() {
 
   html += '</div>';
   document.getElementById('app').innerHTML = html;
+  requestAnimationFrame(sizeYearSpanLabels);
 
   // Legend
   const leg = document.getElementById('legend');
