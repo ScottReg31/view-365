@@ -23,6 +23,7 @@
   --lbl-bg:      #edf5ff;
   --lbl-fg:      #0f1923;
   --invalid-bg:  #f5f7fa;
+  --past-bg:     #e3e7ed;
   /* header chrome — adapts to light header */
   --hdr-border:       rgba(0,0,0,0.14);
   --hdr-hover:        rgba(0,0,0,0.07);
@@ -53,6 +54,7 @@ body.dark {
   --lbl-bg:      #2e4878;
   --lbl-fg:      #eaf4ff;
   --invalid-bg:  #263860;
+  --past-bg:     #293956;
   /* header chrome — adapts to dark header */
   --hdr-border:       rgba(255,255,255,0.15);
   --hdr-hover:        rgba(255,255,255,0.1);
@@ -98,6 +100,7 @@ html, body {
   transition: background 0.12s, border-color 0.12s;
 }
 .hdr-btn:hover { background: var(--hdr-hover); border-color: var(--hdr-hover-border); }
+.hdr-btn.active { background:var(--accent-soft); border-color:var(--accent); color:var(--fg); font-weight:700; }
 .hdr-btn:focus-visible, .hdr-nav button:focus-visible, .signin-btn:focus-visible {
   outline: 3px solid rgba(37,99,235,.35); outline-offset: 2px;
 }
@@ -105,6 +108,10 @@ html, body {
 .view-btn { border:0; background:transparent; color:var(--hdr-fg); padding:5px 10px; border-radius:5px; font-size:11px; cursor:pointer; }
 .view-btn.active { background:var(--bg2); box-shadow:var(--shadow-sm); font-weight:700; color:var(--fg); }
 .user-email { color: var(--hdr-muted); font-size: 11px; }
+.year-progress { width:132px; display:flex; flex-direction:column; gap:4px; }
+.year-progress-text { font-size:10px; font-weight:650; color:var(--hdr-muted); white-space:nowrap; }
+.year-progress-track { height:3px; overflow:hidden; border-radius:999px; background:var(--hdr-track); }
+.year-progress-fill { height:100%; border-radius:inherit; background:var(--accent); }
 
 /* ─────────────── ZOOM SLIDER ─────────────── */
 .zoom-ctrl { display: flex; align-items: center; gap: 7px; }
@@ -233,6 +240,8 @@ html, body {
   cursor: default;
   pointer-events: none;
 }
+.g-day.past { background:var(--past-bg); }
+.g-day.past:hover { background:var(--hover); }
 
 /* Day cell top row */
 .g-day-top {
@@ -328,6 +337,8 @@ body.dense .g-more      { font-size: 8px; }
   .hdr-mid { grid-column:1 / -1; grid-row:2; width:100%; justify-content:space-between; overflow-x:auto; gap:8px; }
   .hdr-right { grid-column:2; grid-row:1; }
   .user-email, .zoom-lbl, .zoom-end, .zoom-slider, .desktop-only { display:none !important; }
+  .year-progress { width:82px; }
+  .year-progress-text { font-size:9px; }
   .view-switch { order:-1; }
   .year-grid { grid-template-columns:52px repeat(31,34px); min-width:1106px; }
   .g-corner, .g-day-hdr { top:96px; }
@@ -422,6 +433,7 @@ body.dense .g-more      { font-size: 8px; }
       <span class="hdr-year" id="yearLabel">2026</span>
       <button onclick="changePeriod(1)" aria-label="Next period">›</button>
     </div>
+    <div id="yearProgress"></div>
   </div>
 
   <div class="hdr-mid" id="hdrMid">
@@ -463,6 +475,7 @@ let calDropOpen = false;
 let viewMode    = localStorage.getItem('v365_view') || 'year';
 let activeMonth = new Date().getMonth();
 let fetchSeq    = 0;
+let fadePast    = localStorage.getItem('v365_fade_past') !== '0';
 
 // ── Helpers ──
 function dk(d) {
@@ -495,12 +508,21 @@ function applyZoom(z) {
 }
 function setRowH(z) { applyZoom(z); }
 
-// ── Fit to Screen ──
-function fitToScreen() {
+// ── Fit controls ──
+function widthFitZoom() {
   // Width fit: 62px (month col) + 31 * col-w fills viewport width
   const availW = window.innerWidth - 4;
   const targetColW = Math.floor((availW - 62) / 31);
-  const zoomW = Math.round(targetColW / 0.52);
+  return Math.round(targetColW / 0.52);
+}
+
+function fitToWidth() {
+  applyZoom(widthFitZoom());
+  window.scrollTo({ left: 0, behavior: 'smooth' });
+}
+
+function fitToScreen() {
+  const zoomW = widthFitZoom();
 
   // Height fit: 52px (header) + 36px (day-row) + 12 * row-h + 38px (legend) = viewport height
   // row-h = zoom, so: zoom = (availH - 126) / 12
@@ -509,6 +531,35 @@ function fitToScreen() {
 
   // Use the smaller of the two so everything fits in both dimensions
   applyZoom(Math.min(zoomW, zoomH));
+}
+
+function toggleFadePast() {
+  fadePast = !fadePast;
+  localStorage.setItem('v365_fade_past', fadePast ? '1' : '0');
+  renderHdr();
+  if (viewMode === 'year') buildGrid();
+}
+
+function yearProgressData(displayYear = year) {
+  const now = new Date();
+  const total = new Date(displayYear, 1, 29).getMonth() === 1 ? 366 : 365;
+  let day = 0;
+  if (displayYear < now.getFullYear()) day = total;
+  else if (displayYear === now.getFullYear()) {
+    day = Math.floor((Date.UTC(displayYear, now.getMonth(), now.getDate()) - Date.UTC(displayYear, 0, 1)) / 86400000) + 1;
+  }
+  return { day, total, pct: day / total * 100 };
+}
+
+function renderYearProgress() {
+  const host = document.getElementById('yearProgress');
+  if (!host) return;
+  if (viewMode !== 'year') { host.innerHTML = ''; return; }
+  const {day,total,pct} = yearProgressData();
+  host.innerHTML = `<div class="year-progress" title="${pct.toFixed(1)}% of ${year} has passed">
+    <div class="year-progress-text">Day ${day} of ${total} · ${pct.toFixed(1)}%</div>
+    <div class="year-progress-track"><div class="year-progress-fill" style="width:${pct}%"></div></div>
+  </div>`;
 }
 
 // ── Dark Mode ──
@@ -580,6 +631,7 @@ function renderHdr() {
   const rgt = document.getElementById('hdrRight');
   document.getElementById('yearLabel').textContent = viewMode === 'month'
     ? `${new Date(year,activeMonth,1).toLocaleDateString('en-US',{month:'short'})} ${year}` : year;
+  renderYearProgress();
 
   const zoomHtml = `
     <div class="zoom-ctrl ${viewMode === 'month' ? 'desktop-only' : ''}">
@@ -588,7 +640,9 @@ function renderHdr() {
              min="45" max="200" value="${zoom}" oninput="setRowH(+this.value)">
       <span class="zoom-end">+</span>
       <span class="zoom-lbl" id="zoomLbl">${zoom}%</span>
-      <button class="hdr-btn" onclick="fitToScreen()" title="Fit entire year to screen width">⊡ Fit</button>
+      <button class="hdr-btn" onclick="fitToWidth()" title="Fit the calendar to the window width">Fit Width</button>
+      <button class="hdr-btn desktop-only" onclick="fitToScreen()" title="Fit the entire calendar on screen">Fit All</button>
+      <button class="hdr-btn desktop-only ${fadePast?'active':''}" onclick="toggleFadePast()" title="${fadePast?'Show':'Fade'} past days" aria-pressed="${fadePast}">${fadePast?'Past Faded':'Fade Past'}</button>
     </div>`;
 
   const viewHtml = `<div class="view-switch" aria-label="Calendar view">
@@ -847,6 +901,7 @@ function buildGrid() {
         const key     = dk(date);
         const dow     = date.getDay();
         const isToday = key === today;
+        const isPast  = date < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
         const isWknd  = dow === 0 || dow === 6;
         const dayEvts = (evts[key] || []).filter(e => isCalEnabled(e.calId))
           .sort(eventDisplaySort);
@@ -855,6 +910,7 @@ function buildGrid() {
         if (isQtr)       cls += ' qtr-start';
         if (isToday)     cls += ' today';
         else if (isWknd) cls += ' wknd';
+        if (fadePast && isPast) cls += ' past';
 
         html += `<div class="${cls}" onclick="showModal('${key}')">`;
         html += '<div class="g-day-top">';
