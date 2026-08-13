@@ -272,6 +272,7 @@ html, body {
 .g-day-event.multi-part::after { content:''; position:absolute; inset:0; }
 .g-day-event.multi-part { position:relative; z-index:2; }
 .g-day-event.allday { border-left: 3px solid rgba(255,255,255,0.4); }
+.g-day-event-slot { visibility:hidden; pointer-events:none; }
 .g-more { font-size: 9px; color: var(--muted); padding: 0 3px; }
 
 /* ── Quarter dividers (APR / JUL / OCT) ── */
@@ -881,6 +882,32 @@ function monthWeekLanes(weekStart) {
   return lanes;
 }
 
+// Reserve the top lanes of each Year View month row for multi-day events.
+// Without month-wide lanes, each day sorts independently and a continuing bar
+// can jump vertically when a one-day or timed event begins beside it.
+function yearMonthLanes(month) {
+  const byId = new Map();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const monthStart = dk(new Date(year,month,1));
+  const monthEnd = dk(new Date(year,month,daysInMonth));
+  for (let day=1; day<=daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    (evts[dk(date)]||[])
+      .filter(e=>e.allDay && e.spanStart!==e.spanEnd && isCalEnabled(e.calId))
+      .forEach(ev=>byId.set(eventKey(ev),ev));
+  }
+  const lanes=[];
+  [...byId.values()].sort(eventDisplaySort).forEach(ev=>{
+    const start=ev.spanStart<monthStart ? 1 : +ev.spanStart.slice(-2);
+    const end=ev.spanEnd>monthEnd ? daysInMonth : +ev.spanEnd.slice(-2);
+    let lane=0;
+    while(lanes[lane]?.some(item=>item.start<=end && item.end>=start)) lane++;
+    if(!lanes[lane]) lanes[lane]=[];
+    lanes[lane].push({ev,start,end});
+  });
+  return lanes;
+}
+
 // Keep a continuing all-day event in the same visual lane when another event
 // begins partway through its span. Google event IDs are not chronological, so
 // sorting by ID can make a bar appear to jump or break between adjacent days.
@@ -913,6 +940,9 @@ function buildGrid() {
   // 12 month rows
   for (let m = 0; m < 12; m++) {
     const isQtr = m === 3 || m === 6 || m === 9; // APR / JUL / OCT
+    const multiLanes = yearMonthLanes(m);
+    const MAX = 4;
+    const reservedRows = Math.min(MAX,multiLanes.length);
 
     // Month label
     html += `<button class="g-month-lbl${isQtr ? ' qtr-start' : ''}" onclick="setView('month',${m})" title="Open ${MONS[m]} month view">${MONS[m]}</button>`;
@@ -947,14 +977,29 @@ function buildGrid() {
 
         if (dayEvts.length) {
           html += '<div class="g-day-events">';
-          const MAX = 4;
-          dayEvts.slice(0, MAX).forEach(ev => {
+          let shown = 0;
+          for (let lane=0; lane<reservedRows; lane++) {
+            const item=multiLanes[lane].find(candidate=>candidate.start<=d && candidate.end>=d);
+            if (!item) {
+              html += '<div class="g-day-event g-day-event-slot" aria-hidden="true">&nbsp;</div>';
+              continue;
+            }
+            const ev=item.ev;
+            shown++;
             const t = ev.allDay ? '' : fmt(ev.start) + ' ';
             const multi = spanClass(ev,key);
             html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${spanLabel(ev,key)}</div>`;
-          });
-          if (dayEvts.length > MAX)
-            html += `<div class="g-more">+${dayEvts.length - MAX} more</div>`;
+          }
+          dayEvts
+            .filter(ev=>!ev.allDay || ev.spanStart===ev.spanEnd)
+            .slice(0,Math.max(0,MAX-reservedRows))
+            .forEach(ev => {
+              shown++;
+              const t = ev.allDay ? '' : fmt(ev.start) + ' ';
+              html += `<div class="g-day-event${ev.allDay?' allday':''}" style="background:${ev.color}" title="${ev.title}">${t}${ev.title}</div>`;
+            });
+          if (dayEvts.length > shown)
+            html += `<div class="g-more">+${dayEvts.length - shown} more</div>`;
           html += '</div>';
         }
         html += '</div>';
