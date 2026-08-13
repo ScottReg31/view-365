@@ -300,13 +300,13 @@ body.dense .g-more      { font-size: 8px; }
 .preview-span { align-self:center; height:7px; border-radius:6px; background:var(--accent); }
 
 /* Month view */
-.month-shell { max-width:1200px; margin:0 auto; padding:28px 24px 40px; }
-.month-title { display:flex; align-items:end; justify-content:space-between; margin-bottom:18px; }
+.month-shell { max-width:1200px; height:calc(100svh - var(--hdr-h, 56px)); margin:0 auto; padding:18px 24px 20px; display:flex; flex-direction:column; overflow:hidden; }
+.month-title { display:flex; align-items:end; justify-content:space-between; margin-bottom:12px; flex:0 0 auto; }
 .month-title h2 { font-size:28px; letter-spacing:-.7px; }
 .month-title p { color:var(--muted); font-size:12px; }
-.month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--border); gap:1px; box-shadow:var(--shadow-sm); }
+.month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); grid-template-rows:auto repeat(6,minmax(0,1fr)); flex:1 1 auto; min-height:0; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--border); gap:1px; box-shadow:var(--shadow-sm); }
 .month-dow { background:var(--hdr-bg); color:var(--muted); padding:9px 10px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
-.month-day { position:relative; min-height:130px; padding:9px; background:var(--bg2); cursor:pointer; overflow:hidden; }
+.month-day { position:relative; min-height:0; padding:7px 9px; background:var(--bg2); cursor:pointer; overflow:hidden; }
 .month-day:hover { background:var(--hover); }
 .month-day.outside { background:var(--invalid-bg); color:var(--muted); }
 .month-day.today { box-shadow:inset 0 0 0 2px #dc2626; }
@@ -325,7 +325,7 @@ body.dense .g-more      { font-size: 8px; }
   .year-grid { grid-template-columns:52px repeat(31,34px); min-width:1106px; }
   .g-corner, .g-day-hdr { top:96px; }
   .g-day-event.multi-part { margin-left:-3px; margin-right:-3px; }
-  .month-shell { padding:16px 10px 28px; }
+  .month-shell { padding:12px 10px 14px; }
   .month-title h2 { font-size:22px; }
   .month-title p { display:none; }
   .month-grid { border-radius:8px; }
@@ -607,7 +607,14 @@ function renderHdr() {
     `<button class="hdr-btn" onclick="goToday()" title="Go to today">Today</button>
      <button class="hdr-btn" onclick="toggleDark()" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
      <button class="hdr-btn desktop-only" onclick="window.print()" title="Print calendar" aria-label="Print calendar">Print</button>`;
+  requestAnimationFrame(syncHeaderHeight);
 }
+
+function syncHeaderHeight() {
+  const hdr = document.querySelector('.hdr');
+  if (hdr) document.documentElement.style.setProperty('--hdr-h', `${hdr.offsetHeight}px`);
+}
+window.addEventListener('resize', syncHeaderHeight);
 
 // ── Calendar Dropdown ──
 function renderCalDrop() {
@@ -760,6 +767,22 @@ function spanLabel(ev, key) {
   return (key === ev.spanStart || day === 1) ? ev.title : '&nbsp;';
 }
 
+// Keep a continuing all-day event in the same visual lane when another event
+// begins partway through its span. Google event IDs are not chronological, so
+// sorting by ID can make a bar appear to jump or break between adjacent days.
+function eventDisplaySort(a, b) {
+  if (a.allDay !== b.allDay) return b.allDay - a.allDay;
+  if (a.allDay) {
+    return a.spanStart.localeCompare(b.spanStart) ||
+      b.spanEnd.localeCompare(a.spanEnd) ||
+      a.title.localeCompare(b.title) ||
+      a.calName.localeCompare(b.calName) ||
+      a.id.localeCompare(b.id);
+  }
+  return (a.start?.getTime() || 0) - (b.start?.getTime() || 0) ||
+    a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
+}
+
 // ── Build Wall Calendar Grid ──
 function buildGrid() {
   const today = dk(new Date());
@@ -793,7 +816,7 @@ function buildGrid() {
         const isToday = key === today;
         const isWknd  = dow === 0 || dow === 6;
         const dayEvts = (evts[key] || []).filter(e => isCalEnabled(e.calId))
-          .sort((a,b) => (b.allDay-a.allDay) || a.id.localeCompare(b.id));
+          .sort(eventDisplaySort);
 
         let cls = 'g-day';
         if (isQtr)       cls += ' qtr-start';
@@ -853,7 +876,7 @@ function buildMonth() {
   for (let i=0;i<42;i++) {
     const date = new Date(gridStart); date.setDate(gridStart.getDate()+i);
     const key=dk(date), outside=date.getMonth()!==activeMonth;
-    const list=(evts[key]||[]).filter(e=>isCalEnabled(e.calId)).sort((a,b)=>(b.allDay-a.allDay)||a.id.localeCompare(b.id));
+    const list=(evts[key]||[]).filter(e=>isCalEnabled(e.calId)).sort(eventDisplaySort);
     html += `<div class="month-day${outside?' outside':''}${key===today?' today':''}" onclick="showModal('${key}')"><div class="month-num">${date.getDate()}</div><div class="month-events">`;
     list.slice(0,4).forEach(ev=>{
       const t=ev.allDay?'':fmt(ev.start)+' ';
