@@ -267,8 +267,7 @@ html, body {
 .g-day-event.multi-start { border-radius:5px 0 0 5px; margin-left:0; }
 .g-day-event.multi-end { border-radius:0 5px 5px 0; margin-right:0; }
 .g-day-event.multi-mid, .g-day-event.multi-end { color:transparent; }
-.g-day-event.multi-start { overflow:visible; text-overflow:clip; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,.18); }
-.g-day-event.multi-start .multi-label { position:absolute; inset:0 auto 0 0; padding:1px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
+.g-day-event.multi-start { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,.18); }
 .g-day-event.allday.multi-mid, .g-day-event.allday.multi-end { border-left:0; }
 .g-day-event.multi-part::after { content:''; position:absolute; inset:0; }
 .g-day-event.multi-part { position:relative; z-index:2; }
@@ -684,7 +683,6 @@ function syncHeaderHeight() {
   if (hdr) document.documentElement.style.setProperty('--hdr-h', `${hdr.offsetHeight}px`);
 }
 window.addEventListener('resize', syncHeaderHeight);
-window.addEventListener('resize', () => requestAnimationFrame(sizeYearSpanLabels));
 
 // ── Calendar Dropdown ──
 function renderCalDrop() {
@@ -926,20 +924,6 @@ function eventDisplaySort(a, b) {
     a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 }
 
-// Multi-day titles start in the first segment but may read across the whole
-// colored bar. Measure the actual responsive grid so the text clips precisely
-// at the event's last segment instead of spilling into unrelated days.
-function sizeYearSpanLabels() {
-  document.querySelectorAll('.g-day-event.multi-start .multi-label').forEach(label=>{
-    const startCell=label.closest('.g-day');
-    const endCell=document.querySelector(`.g-day[data-month="${startCell.dataset.month}"][data-day="${label.dataset.endDay}"]`);
-    if(!endCell) return;
-    const left=label.getBoundingClientRect().left;
-    const right=endCell.getBoundingClientRect().right-5;
-    label.style.width=`${Math.max(0,right-left)}px`;
-  });
-}
-
 // ── Build Wall Calendar Grid ──
 function buildGrid() {
   const today = dk(new Date());
@@ -958,7 +942,6 @@ function buildGrid() {
     const isQtr = m === 3 || m === 6 || m === 9; // APR / JUL / OCT
     const multiLanes = yearMonthLanes(m);
     const MAX = 4;
-    const reservedRows = Math.min(MAX,multiLanes.length);
 
     // Month label
     html += `<button class="g-month-lbl${isQtr ? ' qtr-start' : ''}" onclick="setView('month',${m})" title="Open ${MONS[m]} month view">${MONS[m]}</button>`;
@@ -994,6 +977,14 @@ function buildGrid() {
         if (dayEvts.length) {
           html += '<div class="g-day-events">';
           let shown = 0;
+          // Only reserve through the highest multi-day lane active today.
+          // Reserving the whole month's maximum lane count hides normal events
+          // on unrelated dates and produces misleading "+ more" indicators.
+          let reservedRows = 0;
+          for (let lane=0; lane<Math.min(MAX,multiLanes.length); lane++) {
+            if (multiLanes[lane].some(candidate=>candidate.start<=d && candidate.end>=d))
+              reservedRows=lane+1;
+          }
           for (let lane=0; lane<reservedRows; lane++) {
             const item=multiLanes[lane].find(candidate=>candidate.start<=d && candidate.end>=d);
             if (!item) {
@@ -1004,10 +995,7 @@ function buildGrid() {
             shown++;
             const t = ev.allDay ? '' : fmt(ev.start) + ' ';
             const multi = spanClass(ev,key);
-            const label=(key===ev.spanStart || d===1)
-              ? `<span class="multi-label" data-end-day="${item.end}">${ev.title}</span>`
-              : '&nbsp;';
-            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${label}</div>`;
+            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${spanLabel(ev,key)}</div>`;
           }
           dayEvts
             .filter(ev=>!ev.allDay || ev.spanStart===ev.spanEnd)
@@ -1028,7 +1016,6 @@ function buildGrid() {
 
   html += '</div>';
   document.getElementById('app').innerHTML = html;
-  requestAnimationFrame(sizeYearSpanLabels);
 
   // Legend
   const leg = document.getElementById('legend');
