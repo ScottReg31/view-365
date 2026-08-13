@@ -313,6 +313,13 @@ body.dense .g-more      { font-size: 8px; }
 .month-num { font-size:12px; font-weight:700; margin-bottom:8px; }
 .month-events { display:flex; flex-direction:column; gap:4px; }
 .month-event { padding:4px 6px; border-radius:5px; color:#fff; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.month-event.multi-part { position:relative; z-index:2; border-radius:0; margin-left:-9px; margin-right:-10px; padding-left:10px; padding-right:10px; overflow:visible; text-overflow:clip; }
+.month-event.multi-start { margin-left:0; border-radius:5px 0 0 5px; }
+.month-event.multi-end { margin-right:0; border-radius:0 5px 5px 0; }
+.month-event.multi-mid, .month-event.multi-end { color:transparent; }
+.month-event.multi-start { text-shadow:0 1px 1px rgba(0,0,0,.18); }
+.month-day:has(.month-event.multi-part) { overflow:visible; z-index:2; }
+.month-day:has(.month-event.multi-start) { z-index:3; }
 
 @media (max-width: 760px) {
   .hdr { position:sticky; display:grid; grid-template-columns:1fr auto; height:auto; padding:9px 12px; gap:8px; }
@@ -332,6 +339,9 @@ body.dense .g-more      { font-size: 8px; }
   .month-dow { padding:7px 4px; text-align:center; }
   .month-day { min-height:82px; padding:6px 4px; }
   .month-event { font-size:9px; padding:3px 4px; }
+  .month-event.multi-part { margin-left:-4px; margin-right:-5px; padding-left:5px; padding-right:5px; }
+  .month-event.multi-start { margin-left:0; }
+  .month-event.multi-end { margin-right:0; }
   .year-preview { height:145px; }
 }
 
@@ -452,6 +462,7 @@ let zoom        = parseInt(localStorage.getItem('v365_zoom') || '85');
 let calDropOpen = false;
 let viewMode    = localStorage.getItem('v365_view') || 'year';
 let activeMonth = new Date().getMonth();
+let fetchSeq    = 0;
 
 // ── Helpers ──
 function dk(d) {
@@ -555,6 +566,7 @@ async function getEmail() {
   onIn();
 }
 function signOut() {
+  fetchSeq++;
   token = null; email = ''; cals = []; evts = {}; enabledCals = null;
   sessionStorage.removeItem('v365_tok'); sessionStorage.removeItem('v365_email');
   document.getElementById('legend').style.display = 'none';
@@ -695,13 +707,15 @@ async function gf(url) {
   return r;
 }
 async function fetchAllEvents() {
+  const requestId = ++fetchSeq;
+  const nextEvts = {};
   document.getElementById('app').innerHTML =
     '<div class="loading"><div class="spinner"></div><p>Loading your year…</p></div>';
   try {
     const cr = await gf('https://www.googleapis.com/calendar/v3/users/me/calendarList');
     const cd = await cr.json();
-    cals = (cd.items||[]).filter(c=>c.selected!==false)
-      .map(c=>({ id:c.id, name:c.summary||c.id, color:c.backgroundColor||'#555' }));
+    cals = [...new Map((cd.items||[]).filter(c=>c.selected!==false)
+      .map(c=>[c.id,{ id:c.id, name:c.summary||c.id, color:c.backgroundColor||'#555' }])).values()];
 
     const saved = localStorage.getItem('v365_cals');
     if (saved && !enabledCals) {
@@ -712,7 +726,6 @@ async function fetchAllEvents() {
       } catch(e) { enabledCals = null; }
     }
 
-    evts = {};
     const tMin = new Date(year, 0, 1).toISOString();
     const tMax = new Date(year, 11, 31, 23, 59, 59).toISOString();
 
@@ -731,23 +744,28 @@ async function fetchAllEvents() {
           if (allDay) {
             const last = new Date(en); last.setDate(last.getDate()-1);
             for (let d=new Date(sd); d<en; d.setDate(d.getDate()+1))
-              addEv(new Date(d),ev,cal,true,sd,last);
-          } else { addEv(sd,ev,cal,false,sd,sd); }
+              addEv(new Date(d),ev,cal,true,sd,last,nextEvts);
+          } else { addEv(sd,ev,cal,false,sd,sd,nextEvts); }
         }
         pt = ed.nextPageToken || '';
       } while (pt);
     }
+    if (requestId !== fetchSeq) return;
+    evts = nextEvts;
     renderHdr(); viewMode === 'month' ? buildMonth() : buildGrid();
   } catch(e) {
+    if (requestId !== fetchSeq) return;
     if (e.message!=='expired')
       document.getElementById('app').innerHTML =
         `<div class="loading"><p>Error loading calendar. <button onclick="fetchAllEvents()">Retry</button></p></div>`;
   }
 }
-function addEv(d, ev, cal, allDay, spanStart, spanEnd) {
+function addEv(d, ev, cal, allDay, spanStart, spanEnd, store = evts) {
   if (d.getFullYear()!==year) return;
-  const key=dk(d); if(!evts[key]) evts[key]=[];
-  evts[key].push({ id:ev.id || `${cal.id}-${ev.summary}-${dk(spanStart)}`, title:ev.summary||'(No title)',
+  const key=dk(d); if(!store[key]) store[key]=[];
+  const id=ev.id || `${cal.id}-${ev.summary}-${dk(spanStart)}`;
+  if (store[key].some(item => item.id === id && item.calId === cal.id)) return;
+  store[key].push({ id, title:ev.summary||'(No title)',
     start:ev.start.dateTime?new Date(ev.start.dateTime):null, allDay, color:cal.color,
     calId:cal.id, calName:cal.name, location:ev.location||'', spanStart:dk(spanStart), spanEnd:dk(spanEnd) });
 }
@@ -765,6 +783,21 @@ function spanLabel(ev, key) {
   if (!ev.allDay || ev.spanStart === ev.spanEnd) return ev.title;
   const day = +key.slice(-2);
   return (key === ev.spanStart || day === 1) ? ev.title : '&nbsp;';
+}
+
+function monthSpanClass(ev, key) {
+  if (!ev.allDay || ev.spanStart === ev.spanEnd) return '';
+  const [y,m,d] = key.split('-').map(Number);
+  const dow = new Date(y,m-1,d).getDay();
+  const startsHere = key === ev.spanStart || dow === 0;
+  const endsHere = key === ev.spanEnd || dow === 6;
+  return ` multi-part ${startsHere?'multi-start':''} ${endsHere?'multi-end':''} ${!startsHere&&!endsHere?'multi-mid':''}`;
+}
+
+function monthSpanLabel(ev, key) {
+  if (!ev.allDay || ev.spanStart === ev.spanEnd) return ev.title;
+  const [y,m,d] = key.split('-').map(Number);
+  return (key === ev.spanStart || new Date(y,m-1,d).getDay() === 0) ? ev.title : '&nbsp;';
 }
 
 // Keep a continuing all-day event in the same visual lane when another event
@@ -880,7 +913,8 @@ function buildMonth() {
     html += `<div class="month-day${outside?' outside':''}${key===today?' today':''}" onclick="showModal('${key}')"><div class="month-num">${date.getDate()}</div><div class="month-events">`;
     list.slice(0,4).forEach(ev=>{
       const t=ev.allDay?'':fmt(ev.start)+' ';
-      html += `<div class="month-event" style="background:${ev.color}" title="${ev.title}">${t}${ev.title}</div>`;
+      const multi=monthSpanClass(ev,key);
+      html += `<div class="month-event${multi}" style="background:${ev.color}" title="${ev.title}">${t}${monthSpanLabel(ev,key)}</div>`;
     });
     if(list.length>4) html += `<div class="g-more">+${list.length-4} more</div>`;
     html += '</div></div>';
