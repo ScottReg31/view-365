@@ -218,6 +218,8 @@ html, body {
   transition: background 0.12s, box-shadow 0.12s;
 }
 .g-day:hover       { background: var(--hover); }
+.g-day:has(.multi-part) { position:relative; z-index:4; overflow:visible; }
+.g-day:has(.multi-start) { z-index:6; }
 .g-day.wknd        { background: var(--weekend); }
 .g-day.wknd:hover  { background: var(--hover); }
 .g-day.today {
@@ -256,6 +258,8 @@ html, body {
 .g-day-event.multi-start { border-radius:5px 0 0 5px; margin-left:0; }
 .g-day-event.multi-end { border-radius:0 5px 5px 0; margin-right:0; }
 .g-day-event.multi-mid, .g-day-event.multi-end { color:transparent; }
+.g-day-event.multi-start { overflow:visible; text-overflow:clip; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,.18); }
+.g-day-event.allday.multi-mid, .g-day-event.allday.multi-end { border-left:0; }
 .g-day-event.multi-part::after { content:''; position:absolute; inset:0; }
 .g-day-event.multi-part { position:relative; z-index:2; }
 .g-day-event.allday { border-left: 3px solid rgba(255,255,255,0.4); }
