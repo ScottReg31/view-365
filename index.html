@@ -167,6 +167,7 @@ html, body {
   row 2–13 = month rows
 */
 .year-grid {
+  position: relative;
   display: grid;
   grid-template-columns: 62px repeat(31, minmax(var(--col-w), 1fr));
   grid-template-rows: 36px repeat(12, var(--row-h));
@@ -268,7 +269,7 @@ html, body {
 .g-day-event.multi-end { border-radius:0 5px 5px 0; margin-right:0; }
 .g-day-event.multi-mid, .g-day-event.multi-end { color:transparent; }
 .g-day-event.multi-start { overflow:visible; text-overflow:clip; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,.18); }
-.g-day-event.multi-start .multi-label { position:absolute; inset:0 auto 0 0; padding:1px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; }
+.year-span-label { position:absolute; z-index:30; padding:1px 6px; color:#fff; font-size:10px; font-weight:500; line-height:1.4; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; text-shadow:0 1px 1px rgba(0,0,0,.18); }
 .g-day-event.allday.multi-mid, .g-day-event.allday.multi-end { border-left:0; }
 .g-day-event.multi-part::after { content:''; position:absolute; inset:0; }
 .g-day-event.multi-part { position:relative; z-index:2; }
@@ -508,6 +509,7 @@ function applyZoom(z) {
   localStorage.setItem('v365_zoom', zoom);
   const s = document.getElementById('zoomSlider'); if (s) s.value = zoom;
   const l = document.getElementById('zoomLbl');    if (l) l.textContent = zoom + '%';
+  requestAnimationFrame(sizeYearSpanLabels);
 }
 function setRowH(z) { applyZoom(z); }
 
@@ -926,17 +928,29 @@ function eventDisplaySort(a, b) {
     a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
 }
 
-// Let the title read across its connected Year View bar, while clipping it at
-// the final colored segment. Event capacity is calculated separately per day,
-// so this visual label cannot hide or displace neighboring events.
+// Draw multi-day titles as grid-level overlays rather than children of the
+// first day cell. That keeps neighboring cells, stacking contexts, and fit
+// modes from clipping or covering the title while the colored segments remain
+// part of their individual day cells.
 function sizeYearSpanLabels() {
-  document.querySelectorAll('.g-day-event.multi-start .multi-label').forEach(label=>{
-    const startCell=label.closest('.g-day');
-    const endCell=document.querySelector(`.g-day[data-month="${startCell.dataset.month}"][data-day="${label.dataset.endDay}"]`);
+  const grid=document.getElementById('yearGrid');
+  if(!grid) return;
+  grid.querySelectorAll('.year-span-label').forEach(label=>label.remove());
+  const gridRect=grid.getBoundingClientRect();
+  grid.querySelectorAll('.g-day-event.multi-start[data-span-title]').forEach(start=>{
+    const startCell=start.closest('.g-day');
+    const endCell=grid.querySelector(`.g-day[data-month="${startCell.dataset.month}"][data-day="${start.dataset.endDay}"]`);
     if(!endCell) return;
-    const left=label.getBoundingClientRect().left;
-    const right=endCell.getBoundingClientRect().right-5;
-    label.style.width=`${Math.max(0,right-left)}px`;
+    const startRect=start.getBoundingClientRect();
+    const endRect=endCell.getBoundingClientRect();
+    const label=document.createElement('div');
+    label.className='year-span-label';
+    label.textContent=decodeURIComponent(start.dataset.spanTitle);
+    label.style.left=`${startRect.left-gridRect.left}px`;
+    label.style.top=`${startRect.top-gridRect.top}px`;
+    label.style.width=`${Math.max(0,endRect.right-startRect.left-5)}px`;
+    label.style.height=`${startRect.height}px`;
+    grid.appendChild(label);
   });
 }
 
@@ -1011,10 +1025,10 @@ function buildGrid() {
             shown++;
             const t = ev.allDay ? '' : fmt(ev.start) + ' ';
             const multi = spanClass(ev,key);
-            const label=(key===ev.spanStart || d===1)
-              ? `<span class="multi-label" data-end-day="${item.end}">${ev.title}</span>`
-              : '&nbsp;';
-            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${label}</div>`;
+            const labelData=(key===ev.spanStart || d===1)
+              ? ` data-span-title="${encodeURIComponent(ev.title)}" data-end-day="${item.end}"`
+              : '';
+            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}"${labelData} style="background:${ev.color}" title="${ev.title}">${t}&nbsp;</div>`;
           }
           dayEvts
             .filter(ev=>!ev.allDay || ev.spanStart===ev.spanEnd)
