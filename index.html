@@ -30,6 +30,10 @@
   --hdr-muted:        rgba(0,0,0,0.38);
   --hdr-track:        rgba(0,0,0,0.15);
   --hdr-thumb:        rgba(0,0,0,0.4);
+  --accent:       #2563eb;
+  --accent-soft:  #dbeafe;
+  --shadow-sm:    0 1px 2px rgba(15,23,42,.06);
+  --shadow-md:    0 12px 32px rgba(15,23,42,.14);
   --row-h: 85px;
   --col-w: 44px;
 }
@@ -69,7 +73,7 @@ html, body {
   position: sticky; top: 0; z-index: 200;
   background: var(--hdr-bg); color: var(--hdr-fg);
   display: flex; align-items: center;
-  padding: 0 16px; height: 52px; gap: 14px;
+  padding: 0 16px; min-height: 56px; gap: 14px;
   border-bottom: 1px solid var(--border);
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }
@@ -77,7 +81,7 @@ html, body {
 .hdr-mid   { display: flex; align-items: center; gap: 14px; flex: 1; justify-content: center; }
 .hdr-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-.hdr h1 { font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--hdr-fg); opacity: 0.9; }
+.hdr h1 { font-size: 14px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hdr-fg); }
 .hdr-nav { display: flex; align-items: center; gap: 6px; }
 .hdr-nav button {
   background: none; border: 1px solid var(--hdr-border); border-radius: 5px;
@@ -94,6 +98,12 @@ html, body {
   transition: background 0.12s, border-color 0.12s;
 }
 .hdr-btn:hover { background: var(--hdr-hover); border-color: var(--hdr-hover-border); }
+.hdr-btn:focus-visible, .hdr-nav button:focus-visible, .signin-btn:focus-visible {
+  outline: 3px solid rgba(37,99,235,.35); outline-offset: 2px;
+}
+.view-switch { display:flex; align-items:center; padding:3px; border:1px solid var(--hdr-border); border-radius:8px; background:rgba(255,255,255,.25); }
+.view-btn { border:0; background:transparent; color:var(--hdr-fg); padding:5px 10px; border-radius:5px; font-size:11px; cursor:pointer; }
+.view-btn.active { background:var(--bg2); box-shadow:var(--shadow-sm); font-weight:700; color:var(--fg); }
 .user-email { color: var(--hdr-muted); font-size: 11px; }
 
 /* ─────────────── ZOOM SLIDER ─────────────── */
@@ -191,7 +201,9 @@ html, body {
   border-bottom: 1px solid var(--border);
   cursor: default;
   user-select: none;
+  border-left: 0; border-top: 0; font-family: inherit;
 }
+.g-month-lbl:hover { filter:brightness(.98); cursor:pointer; }
 
 /* ── Day cells ── */
 .g-day {
@@ -203,7 +215,7 @@ html, body {
   background: var(--bg2);
   cursor: pointer;
   overflow: hidden;
-  transition: background 0.07s;
+  transition: background 0.12s, box-shadow 0.12s;
 }
 .g-day:hover       { background: var(--hover); }
 .g-day.wknd        { background: var(--weekend); }
@@ -240,6 +252,12 @@ html, body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: #fff; line-height: 1.4;
 }
+.g-day-event.multi-part { border-radius:0; margin-left:-5px; margin-right:-5px; padding-left:6px; padding-right:6px; }
+.g-day-event.multi-start { border-radius:5px 0 0 5px; margin-left:0; }
+.g-day-event.multi-end { border-radius:0 5px 5px 0; margin-right:0; }
+.g-day-event.multi-mid, .g-day-event.multi-end { color:transparent; }
+.g-day-event.multi-part::after { content:''; position:absolute; inset:0; }
+.g-day-event.multi-part { position:relative; z-index:2; }
 .g-day-event.allday { border-left: 3px solid rgba(255,255,255,0.4); }
 .g-more { font-size: 9px; color: var(--muted); padding: 0 3px; }
 
@@ -258,9 +276,9 @@ body.dense .g-more      { font-size: 8px; }
 /* ─────────────── SIGN-IN ─────────────── */
 .signin-wrap {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 80vh; gap: 22px; padding: 40px;
+  justify-content: center; min-height: calc(100vh - 56px); gap: 18px; padding: 48px 24px;
 }
-.signin-wrap h2 { font-size: 26px; font-weight: 300; letter-spacing: -0.3px; }
+.signin-wrap h2 { font-size: clamp(30px,4vw,48px); font-weight: 750; letter-spacing: -1.5px; text-align:center; }
 .signin-wrap p  { color: var(--muted); font-size: 14px; text-align: center; }
 .signin-btn {
   display: flex; align-items: center; gap: 10px;
@@ -269,6 +287,49 @@ body.dense .g-more      { font-size: 8px; }
   padding: 12px 28px; font-size: 14px; font-weight: 500; cursor: pointer;
 }
 .signin-btn:hover { opacity: 0.85; }
+.signin-kicker { color:var(--accent); text-transform:uppercase; font-size:11px; font-weight:800; letter-spacing:.14em; }
+.signin-note { font-size:11px !important; }
+.year-preview { width:min(760px,92vw); height:170px; margin-top:18px; padding:16px; overflow:hidden; border:1px solid var(--border); border-radius:16px; background:var(--bg2); box-shadow:var(--shadow-md); }
+.preview-grid { display:grid; grid-template-columns:52px repeat(12,1fr); grid-template-rows:repeat(6,22px); gap:1px; opacity:.82; }
+.preview-cell { background:var(--weekend); border-radius:2px; }
+.preview-label { display:flex; align-items:center; font-size:7px; font-weight:800; letter-spacing:.1em; color:var(--muted); }
+.preview-span { align-self:center; height:7px; border-radius:6px; background:var(--accent); }
+
+/* Month view */
+.month-shell { max-width:1200px; margin:0 auto; padding:28px 24px 40px; }
+.month-title { display:flex; align-items:end; justify-content:space-between; margin-bottom:18px; }
+.month-title h2 { font-size:28px; letter-spacing:-.7px; }
+.month-title p { color:var(--muted); font-size:12px; }
+.month-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--border); gap:1px; box-shadow:var(--shadow-sm); }
+.month-dow { background:var(--hdr-bg); color:var(--muted); padding:9px 10px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+.month-day { position:relative; min-height:130px; padding:9px; background:var(--bg2); cursor:pointer; overflow:hidden; }
+.month-day:hover { background:var(--hover); }
+.month-day.outside { background:var(--invalid-bg); color:var(--muted); }
+.month-day.today { box-shadow:inset 0 0 0 2px #dc2626; }
+.month-num { font-size:12px; font-weight:700; margin-bottom:8px; }
+.month-events { display:flex; flex-direction:column; gap:4px; }
+.month-event { padding:4px 6px; border-radius:5px; color:#fff; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+@media (max-width: 760px) {
+  .hdr { position:sticky; display:grid; grid-template-columns:1fr auto; height:auto; padding:9px 12px; gap:8px; }
+  .hdr-left { gap:8px; min-width:0; }
+  .hdr h1 { font-size:12px; }
+  .hdr-mid { grid-column:1 / -1; grid-row:2; width:100%; justify-content:space-between; overflow-x:auto; gap:8px; }
+  .hdr-right { grid-column:2; grid-row:1; }
+  .user-email, .zoom-lbl, .zoom-end, .zoom-slider, .desktop-only { display:none !important; }
+  .view-switch { order:-1; }
+  .year-grid { grid-template-columns:52px repeat(31,34px); min-width:1106px; }
+  .g-corner, .g-day-hdr { top:96px; }
+  .g-day-event.multi-part { margin-left:-3px; margin-right:-3px; }
+  .month-shell { padding:16px 10px 28px; }
+  .month-title h2 { font-size:22px; }
+  .month-title p { display:none; }
+  .month-grid { border-radius:8px; }
+  .month-dow { padding:7px 4px; text-align:center; }
+  .month-day { min-height:82px; padding:6px 4px; }
+  .month-event { font-size:9px; padding:3px 4px; }
+  .year-preview { height:145px; }
+}
 
 /* ─────────────── LOADING ─────────────── */
 .loading {
@@ -343,9 +404,9 @@ body.dense .g-more      { font-size: 8px; }
   <div class="hdr-left">
     <h1>View 365</h1>
     <div class="hdr-nav">
-      <button onclick="changeYear(year-1)">‹</button>
+      <button onclick="changePeriod(-1)" aria-label="Previous period">‹</button>
       <span class="hdr-year" id="yearLabel">2026</span>
-      <button onclick="changeYear(year+1)">›</button>
+      <button onclick="changePeriod(1)" aria-label="Next period">›</button>
     </div>
   </div>
 
@@ -385,6 +446,8 @@ let tclient     = null;
 let isDark      = localStorage.getItem('v365_dark') === '1';
 let zoom        = parseInt(localStorage.getItem('v365_zoom') || '85');
 let calDropOpen = false;
+let viewMode    = localStorage.getItem('v365_view') || 'year';
+let activeMonth = new Date().getMonth();
 
 // ── Helpers ──
 function dk(d) {
@@ -448,6 +511,20 @@ function init() {
   token ? onIn() : showSignIn();
 }
 
+function setView(mode, month = activeMonth) {
+  viewMode = mode; activeMonth = month;
+  localStorage.setItem('v365_view', mode);
+  renderHdr();
+  mode === 'month' ? buildMonth() : buildGrid();
+}
+
+function goToday() {
+  year = new Date().getFullYear(); activeMonth = new Date().getMonth();
+  document.getElementById('yearLabel').textContent = year;
+  if (token && !Object.keys(evts).length) fetchAllEvents();
+  else setView(viewMode, activeMonth);
+}
+
 // ── Auth ──
 function initTC() {
   if (tclient) return;
@@ -485,9 +562,11 @@ function onIn() { renderHdr(); fetchAllEvents(); }
 function renderHdr() {
   const mid = document.getElementById('hdrMid');
   const rgt = document.getElementById('hdrRight');
+  document.getElementById('yearLabel').textContent = viewMode === 'month'
+    ? `${new Date(year,activeMonth,1).toLocaleDateString('en-US',{month:'short'})} ${year}` : year;
 
   const zoomHtml = `
-    <div class="zoom-ctrl">
+    <div class="zoom-ctrl ${viewMode === 'month' ? 'desktop-only' : ''}">
       <span class="zoom-end">−</span>
       <input type="range" class="zoom-slider" id="zoomSlider"
              min="45" max="200" value="${zoom}" oninput="setRowH(+this.value)">
@@ -495,6 +574,11 @@ function renderHdr() {
       <span class="zoom-lbl" id="zoomLbl">${zoom}%</span>
       <button class="hdr-btn" onclick="fitToScreen()" title="Fit entire year to screen width">⊡ Fit</button>
     </div>`;
+
+  const viewHtml = `<div class="view-switch" aria-label="Calendar view">
+    <button class="view-btn ${viewMode==='year'?'active':''}" onclick="setView('year')">Year</button>
+    <button class="view-btn ${viewMode==='month'?'active':''}" onclick="setView('month')">Month</button>
+  </div>`;
 
   if (token && cals.length > 0) {
     const cnt = enabledCals ? enabledCals.size : cals.length;
@@ -505,10 +589,10 @@ function renderHdr() {
         </button>
         <div class="cal-drop" id="calDrop" style="display:none;"></div>
       </div>
-      ${zoomHtml}`;
+      ${viewHtml}${zoomHtml}`;
     renderCalDrop();
   } else {
-    mid.innerHTML = zoomHtml;
+    mid.innerHTML = viewHtml + zoomHtml;
   }
 
   rgt.innerHTML =
@@ -516,8 +600,9 @@ function renderHdr() {
       ? `<span class="user-email">${email}</span>
          <button class="hdr-btn" onclick="signOut()">Sign out</button>`
       : `<button class="hdr-btn" onclick="signIn()">Sign in</button>`) +
-    `<button class="hdr-btn" onclick="toggleDark()">◑</button>
-     <button class="hdr-btn" onclick="window.print()">⎙</button>`;
+    `<button class="hdr-btn" onclick="goToday()" title="Go to today">Today</button>
+     <button class="hdr-btn" onclick="toggleDark()" title="Toggle dark mode" aria-label="Toggle dark mode">◐</button>
+     <button class="hdr-btn desktop-only" onclick="window.print()" title="Print calendar" aria-label="Print calendar">Print</button>`;
 }
 
 // ── Calendar Dropdown ──
@@ -544,7 +629,7 @@ function toggleCalDrop(e) {
 function toggleCal(id, checked) {
   if (!enabledCals) enabledCals = new Set(cals.map(c => c.id));
   if (checked) enabledCals.add(id); else enabledCals.delete(id);
-  saveCalPrefs(); renderHdr(); buildGrid();
+  saveCalPrefs(); renderHdr(); viewMode === 'month' ? buildMonth() : buildGrid();
 }
 function calSelectAll() {
   enabledCals = new Set(cals.map(c => c.id)); saveCalPrefs(); renderHdr();
@@ -570,8 +655,9 @@ document.addEventListener('click', e => {
 function showSignIn() {
   document.getElementById('app').innerHTML = `
     <div class="signin-wrap">
-      <h2>Your year, at a glance.</h2>
-      <p>Connect Google Calendar to see all 365 days.</p>
+      <div class="signin-kicker">Make time visible</div>
+      <h2>Your whole year.<br>One clear view.</h2>
+      <p>See trips, milestones, busy seasons, and open space without flipping through twelve separate pages.</p>
       <button class="signin-btn" onclick="signIn()">
         <svg width="16" height="16" viewBox="0 0 48 48">
           <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
@@ -581,6 +667,13 @@ function showSignIn() {
         </svg>
         Sign in with Google
       </button>
+      <p class="signin-note">Read-only access. Your calendar data stays in your browser.</p>
+      <div class="year-preview" aria-hidden="true"><div class="preview-grid">
+        ${['JAN','FEB','MAR','APR','MAY','JUN'].map((m,i)=>`<div class="preview-label" style="grid-column:1;grid-row:${i+1}">${m}</div>${Array.from({length:12},(_,j)=>`<div class="preview-cell" style="grid-column:${j+2};grid-row:${i+1}"></div>`).join('')}`).join('')}
+        <div class="preview-span" style="grid-column:4/7;grid-row:2;background:#16a34a"></div>
+        <div class="preview-span" style="grid-column:8/12;grid-row:4;background:#f97316"></div>
+        <div class="preview-span" style="grid-column:3/5;grid-row:6"></div>
+      </div></div>
     </div>`;
 }
 
@@ -625,24 +718,42 @@ async function fetchAllEvents() {
           const sd = allDay ? parseLocalDate(ev.start.date) : new Date(ev.start.dateTime);
           const en = allDay ? parseLocalDate(ev.end.date)   : new Date(ev.end.dateTime);
           if (allDay) {
-            for (let d=new Date(sd); d<en; d.setDate(d.getDate()+1)) addEv(new Date(d),ev,cal,true);
-          } else { addEv(sd,ev,cal,false); }
+            const last = new Date(en); last.setDate(last.getDate()-1);
+            for (let d=new Date(sd); d<en; d.setDate(d.getDate()+1))
+              addEv(new Date(d),ev,cal,true,sd,last);
+          } else { addEv(sd,ev,cal,false,sd,sd); }
         }
         pt = ed.nextPageToken || '';
       } while (pt);
     }
-    renderHdr(); buildGrid();
+    renderHdr(); viewMode === 'month' ? buildMonth() : buildGrid();
   } catch(e) {
     if (e.message!=='expired')
       document.getElementById('app').innerHTML =
         `<div class="loading"><p>Error loading calendar. <button onclick="fetchAllEvents()">Retry</button></p></div>`;
   }
 }
-function addEv(d, ev, cal, allDay) {
+function addEv(d, ev, cal, allDay, spanStart, spanEnd) {
   if (d.getFullYear()!==year) return;
   const key=dk(d); if(!evts[key]) evts[key]=[];
-  evts[key].push({ title:ev.summary||'(No title)', start:ev.start.dateTime?new Date(ev.start.dateTime):null,
-    allDay, color:cal.color, calId:cal.id, calName:cal.name, location:ev.location||'' });
+  evts[key].push({ id:ev.id || `${cal.id}-${ev.summary}-${dk(spanStart)}`, title:ev.summary||'(No title)',
+    start:ev.start.dateTime?new Date(ev.start.dateTime):null, allDay, color:cal.color,
+    calId:cal.id, calName:cal.name, location:ev.location||'', spanStart:dk(spanStart), spanEnd:dk(spanEnd) });
+}
+
+function spanClass(ev, key) {
+  if (!ev.allDay || ev.spanStart === ev.spanEnd) return '';
+  const [,m,d] = key.split('-').map(Number);
+  const startsHere = key === ev.spanStart || d === 1;
+  const daysInMonth = new Date(year, m, 0).getDate();
+  const endsHere = key === ev.spanEnd || d === daysInMonth;
+  return ` multi-part ${startsHere?'multi-start':''} ${endsHere?'multi-end':''} ${!startsHere&&!endsHere?'multi-mid':''}`;
+}
+
+function spanLabel(ev, key) {
+  if (!ev.allDay || ev.spanStart === ev.spanEnd) return ev.title;
+  const day = +key.slice(-2);
+  return (key === ev.spanStart || day === 1) ? ev.title : '&nbsp;';
 }
 
 // ── Build Wall Calendar Grid ──
@@ -663,7 +774,7 @@ function buildGrid() {
     const isQtr = m === 3 || m === 6 || m === 9; // APR / JUL / OCT
 
     // Month label
-    html += `<div class="g-month-lbl${isQtr ? ' qtr-start' : ''}">${MONS[m]}</div>`;
+    html += `<button class="g-month-lbl${isQtr ? ' qtr-start' : ''}" onclick="setView('month',${m})" title="Open ${MONS[m]} month view">${MONS[m]}</button>`;
 
     // 31 day cells
     for (let d = 1; d <= 31; d++) {
@@ -677,7 +788,8 @@ function buildGrid() {
         const dow     = date.getDay();
         const isToday = key === today;
         const isWknd  = dow === 0 || dow === 6;
-        const dayEvts = (evts[key] || []).filter(e => isCalEnabled(e.calId));
+        const dayEvts = (evts[key] || []).filter(e => isCalEnabled(e.calId))
+          .sort((a,b) => (b.allDay-a.allDay) || a.id.localeCompare(b.id));
 
         let cls = 'g-day';
         if (isQtr)       cls += ' qtr-start';
@@ -695,7 +807,8 @@ function buildGrid() {
           const MAX = 4;
           dayEvts.slice(0, MAX).forEach(ev => {
             const t = ev.allDay ? '' : fmt(ev.start) + ' ';
-            html += `<div class="g-day-event${ev.allDay?' allday':''}" style="background:${ev.color}" title="${ev.title}">${t}${ev.title}</div>`;
+            const multi = spanClass(ev,key);
+            html += `<div class="g-day-event${ev.allDay?' allday':''}${multi}" style="background:${ev.color}" title="${ev.title}">${t}${spanLabel(ev,key)}</div>`;
           });
           if (dayEvts.length > MAX)
             html += `<div class="g-more">+${dayEvts.length - MAX} more</div>`;
@@ -723,6 +836,31 @@ function buildGrid() {
     const el = document.querySelector('.g-day.today');
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
   }, 120);
+}
+
+function buildMonth() {
+  const first = new Date(year, activeMonth, 1);
+  const gridStart = new Date(year, activeMonth, 1 - first.getDay());
+  const today = dk(new Date());
+  const monthName = first.toLocaleDateString('en-US',{month:'long'});
+  let html = `<div class="month-shell"><div class="month-title"><div><h2>${monthName} ${year}</h2><p>A closer look at the month—still read-only, still connected to your calendars.</p></div>
+    <button class="hdr-btn" onclick="setView('year')">Back to Year</button></div><div class="month-grid">`;
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d=>html += `<div class="month-dow">${d}</div>`);
+  for (let i=0;i<42;i++) {
+    const date = new Date(gridStart); date.setDate(gridStart.getDate()+i);
+    const key=dk(date), outside=date.getMonth()!==activeMonth;
+    const list=(evts[key]||[]).filter(e=>isCalEnabled(e.calId)).sort((a,b)=>(b.allDay-a.allDay)||a.id.localeCompare(b.id));
+    html += `<div class="month-day${outside?' outside':''}${key===today?' today':''}" onclick="showModal('${key}')"><div class="month-num">${date.getDate()}</div><div class="month-events">`;
+    list.slice(0,4).forEach(ev=>{
+      const t=ev.allDay?'':fmt(ev.start)+' ';
+      html += `<div class="month-event" style="background:${ev.color}" title="${ev.title}">${t}${ev.title}</div>`;
+    });
+    if(list.length>4) html += `<div class="g-more">+${list.length-4} more</div>`;
+    html += '</div></div>';
+  }
+  html += '</div></div>';
+  document.getElementById('app').innerHTML=html;
+  document.getElementById('legend').style.display='none';
 }
 
 // ── Day Modal ──
@@ -791,7 +929,15 @@ document.addEventListener('mouseout', e => {
 // ── Year Nav ──
 function changeYear(y) {
   year = y; document.getElementById('yearLabel').textContent = year;
-  if (token) fetchAllEvents(); else buildGrid();
+  if (token) fetchAllEvents(); else (viewMode==='month'?buildMonth():buildGrid());
+}
+
+function changePeriod(delta) {
+  if (viewMode === 'year') return changeYear(year + delta);
+  activeMonth += delta;
+  if (activeMonth < 0) { activeMonth = 11; year--; }
+  if (activeMonth > 11) { activeMonth = 0; year++; }
+  if (token) fetchAllEvents(); else buildMonth();
 }
 
 // ── Boot ──
